@@ -217,7 +217,7 @@ class ARCPRuntime:
                     )
                     await rt._send(state, accepted)
                 else:
-                    raise ARCPError(
+                    raise ARCPError(  # noqa: TRY301 — raise inside try is deliberate; the except below converts validation errors into a cancel.refused envelope alongside other ARCPError sources.
                         ErrorCode.UNIMPLEMENTED,
                         f"cancel target {payload.target!r} not supported in v0.1",
                     )

@@ -73,6 +73,12 @@ select = [
 ]
 ignore = [
     "E501",  # line-too-long: handled by ruff format; surfaced cases are pydantic Field descriptions.
+    # TRY003: raise-vanilla-args. The ARCPError exception class already carries
+    # typed structure (`code: ErrorCode`, `details: dict`); the message string
+    # is the human-readable explanation. Splitting one subclass per message
+    # would add code without adding type structure. Same applies to
+    # TransportClosed and the two pydantic field-validator ValueErrors.
+    "TRY003",
 ]
 
 [tool.ruff.lint.per-file-ignores]
