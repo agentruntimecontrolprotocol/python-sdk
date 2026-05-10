@@ -28,9 +28,7 @@ async def _drain_until(
         if predicate(env):
             return collected
         if loop.time() > deadline:
-            raise AssertionError(
-                f"timeout waiting; received types: {[e.type for e in collected]}"
-            )
+            raise AssertionError(f"timeout waiting; received types: {[e.type for e in collected]}")
     return collected
 
 
@@ -58,9 +56,7 @@ async def test_cooperative_cancel_yields_job_cancelled(
     await client.send(invoke)
 
     # Wait for job.started, then cancel.
-    started = await _drain_until(
-        client, lambda e: e.type == "job.started", timeout=2.0
-    )
+    started = await _drain_until(client, lambda e: e.type == "job.started", timeout=2.0)
     job_id = started[-1].job_id
     assert job_id is not None
 
@@ -98,9 +94,7 @@ async def test_cancel_terminal_job_refused(
         payload={"tool": "fast", "arguments": {}},
     )
     await client.send(invoke)
-    received = await _drain_until(
-        client, lambda e: e.type == "job.completed", timeout=2.0
-    )
+    received = await _drain_until(client, lambda e: e.type == "job.completed", timeout=2.0)
     job_id = next(e.job_id for e in received if e.type == "job.completed")
     assert job_id is not None
 
@@ -137,9 +131,7 @@ async def test_cancel_uncooperative_escalates_to_aborted(
         payload={"tool": "stubborn", "arguments": {}},
     )
     await client.send(invoke)
-    started = await _drain_until(
-        client, lambda e: e.type == "job.started", timeout=2.0
-    )
+    started = await _drain_until(client, lambda e: e.type == "job.started", timeout=2.0)
     job_id = started[-1].job_id
 
     cancel = Envelope(

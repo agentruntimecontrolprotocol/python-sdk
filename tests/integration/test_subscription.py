@@ -28,9 +28,7 @@ async def _drain_until(
         if predicate(env):
             return collected
         if loop.time() > deadline:
-            raise AssertionError(
-                f"timeout; received types: {[e.type for e in collected]}"
-            )
+            raise AssertionError(f"timeout; received types: {[e.type for e in collected]}")
     return collected
 
 
@@ -111,15 +109,18 @@ async def test_subscribe_backfill_then_live(
 
     received = await _drain_until(
         client,
-        lambda e: e.type == "subscribe.event"
-        and e.payload["event"]["type"] == "subscription.backfill_complete",
+        lambda e: (
+            e.type == "subscribe.event"
+            and e.payload["event"]["type"] == "subscription.backfill_complete"
+        ),
         timeout=3.0,
     )
     inner = [e.payload["event"]["type"] for e in received if e.type == "subscribe.event"]
     assert "job.completed" in inner
     assert "subscription.backfill_complete" in inner
     bf_complete = next(
-        e for e in received
+        e
+        for e in received
         if e.type == "subscribe.event"
         and e.payload["event"]["type"] == "subscription.backfill_complete"
     )

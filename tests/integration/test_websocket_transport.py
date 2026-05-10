@@ -52,7 +52,9 @@ async def test_websocket_full_lifecycle() -> None:
         transport=transport,
         client_identity=Identity(kind="t", version="1"),
         auth=AuthBlock(scheme="bearer", token="good"),
-        capabilities=Capabilities(streaming=True, human_input=True, artifacts=True, subscriptions=True),
+        capabilities=Capabilities(
+            streaming=True, human_input=True, artifacts=True, subscriptions=True
+        ),
     )
     try:
         accepted = await client.open()

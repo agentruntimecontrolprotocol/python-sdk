@@ -140,8 +140,7 @@ class EventLog:
             params: tuple[Any, ...] = (anchor_rowid,)
         else:
             sql = (
-                "SELECT envelope FROM events "
-                "WHERE rowid > ? AND session_id = ? ORDER BY rowid ASC"
+                "SELECT envelope FROM events WHERE rowid > ? AND session_id = ? ORDER BY rowid ASC"
             )
             params = (anchor_rowid, session_id)
 

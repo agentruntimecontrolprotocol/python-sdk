@@ -84,19 +84,25 @@ async def test_has_message() -> None:
 async def test_idempotency_results_store_and_lookup() -> None:
     async with EventLog(":memory:") as log:
         result = {"type": "tool.result", "payload": {"ok": True}}
-        assert await log.remember_idempotent(
-            principal="alice",
-            idempotency_key="k1",
-            result=result,
-            created_at="2026-05-09T13:00:00Z",
-        ) is True
+        assert (
+            await log.remember_idempotent(
+                principal="alice",
+                idempotency_key="k1",
+                result=result,
+                created_at="2026-05-09T13:00:00Z",
+            )
+            is True
+        )
         # Repeat is a no-op.
-        assert await log.remember_idempotent(
-            principal="alice",
-            idempotency_key="k1",
-            result={"different": True},
-            created_at="2026-05-09T13:00:01Z",
-        ) is False
+        assert (
+            await log.remember_idempotent(
+                principal="alice",
+                idempotency_key="k1",
+                result={"different": True},
+                created_at="2026-05-09T13:00:01Z",
+            )
+            is False
+        )
         stored = await log.lookup_idempotent(principal="alice", idempotency_key="k1")
         assert stored == result
         # Different principal sees nothing.

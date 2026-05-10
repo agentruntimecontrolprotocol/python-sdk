@@ -11,8 +11,7 @@ from arcp.errors import ARCPError, ErrorCode
 class TokenValidator(Protocol):
     """Validates an opaque bearer token; returns the principal on success."""
 
-    def validate(self, token: str) -> str:
-        ...
+    def validate(self, token: str) -> str: ...
 
 
 @dataclass

@@ -47,8 +47,12 @@ class ARCPClient:
     session_id: str | None = None
     runtime: dict[str, Any] | None = None
     _negotiated: Capabilities | None = None
-    _waiters: dict[str, asyncio.Future[Envelope]] = field(default_factory=dict[str, asyncio.Future[Envelope]])
-    _events: asyncio.Queue[Envelope | None] = field(default_factory=lambda: asyncio.Queue[Envelope | None]())
+    _waiters: dict[str, asyncio.Future[Envelope]] = field(
+        default_factory=dict[str, asyncio.Future[Envelope]]
+    )
+    _events: asyncio.Queue[Envelope | None] = field(
+        default_factory=lambda: asyncio.Queue[Envelope | None]()
+    )
     _reader_task: asyncio.Task[None] | None = None
     _closed: bool = False
 
@@ -125,9 +129,7 @@ class ARCPClient:
             raise RuntimeError("client is not open")
         await self.transport.send(envelope.to_wire())
 
-    async def request(
-        self, envelope: Envelope, *, timeout: float | None = None
-    ) -> Envelope:
+    async def request(self, envelope: Envelope, *, timeout: float | None = None) -> Envelope:
         """Send a command and await the envelope whose ``correlation_id`` matches.
 
         ``correlation_id`` matching is keyed on the outbound envelope's ``id``.

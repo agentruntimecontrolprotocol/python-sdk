@@ -17,9 +17,7 @@ from arcp.runtime.job import JobContext
 
 
 async def asker(ctx: JobContext, args: dict[str, Any]) -> dict[str, Any]:
-    expires = (datetime.now(tz=UTC) + timedelta(seconds=10)).strftime(
-        "%Y-%m-%dT%H:%M:%SZ"
-    )
+    expires = (datetime.now(tz=UTC) + timedelta(seconds=10)).strftime("%Y-%m-%dT%H:%M:%SZ")
     return await ctx.request_human_input(
         prompt="Which branch should I create?",
         response_schema={"type": "object", "required": ["branch"]},

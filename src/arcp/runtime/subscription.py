@@ -67,12 +67,8 @@ class SubscriptionManager:
     """
 
     event_log: EventLog
-    _subscriptions: dict[str, Subscription] = field(
-        default_factory=dict[str, Subscription]
-    )
-    _backfill_tasks: set[asyncio.Task[None]] = field(
-        default_factory=set[asyncio.Task[None]]
-    )
+    _subscriptions: dict[str, Subscription] = field(default_factory=dict[str, Subscription])
+    _backfill_tasks: set[asyncio.Task[None]] = field(default_factory=set[asyncio.Task[None]])
 
     def all(self) -> list[Subscription]:
         return list(self._subscriptions.values())
@@ -100,9 +96,7 @@ class SubscriptionManager:
         )
         self._subscriptions[sub.subscription_id] = sub
         if payload.since is not None:
-            self._backfill_tasks.add(
-                asyncio.create_task(self._backfill(sub, payload.since))
-            )
+            self._backfill_tasks.add(asyncio.create_task(self._backfill(sub, payload.since)))
         else:
             sub.backfill_done = True
         return sub

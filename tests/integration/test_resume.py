@@ -29,9 +29,7 @@ async def _drain_until(
         if predicate(env):
             return collected
         if loop.time() > deadline:
-            raise AssertionError(
-                f"timeout; received types: {[e.type for e in collected]}"
-            )
+            raise AssertionError(f"timeout; received types: {[e.type for e in collected]}")
     return collected
 
 
@@ -64,9 +62,7 @@ async def test_resume_replays_after_anchor(
         payload={"after_message_id": anchor},
     )
     await client.send(resume)
-    replayed = await _drain_until(
-        client, lambda e: e.type == "job.completed", timeout=3.0
-    )
+    replayed = await _drain_until(client, lambda e: e.type == "job.completed", timeout=3.0)
     types = [e.type for e in replayed]
     assert "job.completed" in types
     assert "tool.result" in types

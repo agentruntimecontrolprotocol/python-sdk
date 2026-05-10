@@ -35,9 +35,7 @@ async def _drain_until(
         if predicate(env):
             return collected
         if loop.time() > deadline:
-            raise AssertionError(
-                f"timeout; received types: {[e.type for e in collected]}"
-            )
+            raise AssertionError(f"timeout; received types: {[e.type for e in collected]}")
     return collected
 
 
@@ -65,9 +63,7 @@ async def test_human_input_happy_path(
     )
     await client.send(invoke)
 
-    request = await _drain_until(
-        client, lambda e: e.type == "human.input.request", timeout=2.0
-    )
+    request = await _drain_until(client, lambda e: e.type == "human.input.request", timeout=2.0)
     request_env = request[-1]
 
     response = Envelope(
@@ -79,9 +75,7 @@ async def test_human_input_happy_path(
     )
     await client.send(response)
 
-    final = await _drain_until(
-        client, lambda e: e.type == "job.completed", timeout=3.0
-    )
+    final = await _drain_until(client, lambda e: e.type == "job.completed", timeout=3.0)
     result_env = next(e for e in final if e.type == "tool.result")
     assert result_env.payload["value"] == {"branch": "fix/x"}
 
@@ -108,9 +102,7 @@ async def test_human_input_default_used_on_timeout(
         payload={"tool": "asker_default", "arguments": {}},
     )
     await client.send(invoke)
-    final = await _drain_until(
-        client, lambda e: e.type == "job.completed", timeout=3.0
-    )
+    final = await _drain_until(client, lambda e: e.type == "job.completed", timeout=3.0)
     types = [e.type for e in final]
     assert "human.input.cancelled" in types
     result = next(e for e in final if e.type == "tool.result")
@@ -138,9 +130,7 @@ async def test_human_input_no_default_fails_on_expiry(
         payload={"tool": "asker_strict", "arguments": {}},
     )
     await client.send(invoke)
-    final = await _drain_until(
-        client, lambda e: e.type == "job.failed", timeout=3.0
-    )
+    final = await _drain_until(client, lambda e: e.type == "job.failed", timeout=3.0)
     failed = next(e for e in final if e.type == "job.failed")
     assert failed.payload["code"] == "DEADLINE_EXCEEDED"
 
@@ -170,9 +160,7 @@ async def test_human_choice_round_trip(
         payload={"tool": "chooser", "arguments": {}},
     )
     await client.send(invoke)
-    request = await _drain_until(
-        client, lambda e: e.type == "human.choice.request", timeout=2.0
-    )
+    request = await _drain_until(client, lambda e: e.type == "human.choice.request", timeout=2.0)
     response = Envelope(
         id="msg_resp_c",
         type="human.choice.response",
@@ -181,8 +169,6 @@ async def test_human_choice_round_trip(
         payload={"choice_id": "b"},
     )
     await client.send(response)
-    final = await _drain_until(
-        client, lambda e: e.type == "job.completed", timeout=3.0
-    )
+    final = await _drain_until(client, lambda e: e.type == "job.completed", timeout=3.0)
     result = next(e for e in final if e.type == "tool.result")
     assert result.payload["value"] == "b"

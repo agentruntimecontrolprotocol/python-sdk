@@ -74,9 +74,7 @@ class ClientHandlers:
                         correlation_id=env.id,
                         payload={
                             "permission": env.payload["permission"],
-                            "lease_seconds": env.payload.get(
-                                "requested_lease_seconds", 300
-                            ),
+                            "lease_seconds": env.payload.get("requested_lease_seconds", 300),
                         },
                     )
                 )

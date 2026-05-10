@@ -28,9 +28,7 @@ async def _drain_until(
         if predicate(env):
             return collected
         if loop.time() > deadline:
-            raise AssertionError(
-                f"timeout waiting; received types: {[e.type for e in collected]}"
-            )
+            raise AssertionError(f"timeout waiting; received types: {[e.type for e in collected]}")
     return collected
 
 
@@ -55,9 +53,7 @@ async def test_tool_invoke_full_lifecycle(
     )
     await client.send(invoke)
 
-    received = await _drain_until(
-        client, lambda e: e.type == "job.completed", timeout=3.0
-    )
+    received = await _drain_until(client, lambda e: e.type == "job.completed", timeout=3.0)
     types = [e.type for e in received]
     assert "job.accepted" in types
     assert "job.started" in types
@@ -137,9 +133,7 @@ async def test_streaming_chunks_round_trip(
     )
     await client.send(invoke)
 
-    received = await _drain_until(
-        client, lambda e: e.type == "job.completed", timeout=3.0
-    )
+    received = await _drain_until(client, lambda e: e.type == "job.completed", timeout=3.0)
     chunks = [e for e in received if e.type == "stream.chunk"]
     assert len(chunks) == 3
     sequences = [e.payload["sequence"] for e in chunks]
@@ -170,9 +164,7 @@ async def test_thought_stream_carries_role_and_redacted(
         payload={"tool": "thinker", "arguments": {}},
     )
     await client.send(invoke)
-    received = await _drain_until(
-        client, lambda e: e.type == "job.completed", timeout=3.0
-    )
+    received = await _drain_until(client, lambda e: e.type == "job.completed", timeout=3.0)
     chunks = [e for e in received if e.type == "stream.chunk"]
     assert chunks[0].payload["role"] == "assistant_thought"
     assert chunks[0].payload["redacted"] is False

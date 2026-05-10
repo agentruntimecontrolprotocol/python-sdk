@@ -24,9 +24,7 @@ async def deploy(ctx: JobContext, args: dict[str, Any]) -> dict[str, Any]:
         operation="rollout",
         requested_lease_seconds=120,
     )
-    expires = (datetime.now(tz=UTC) + timedelta(seconds=10)).strftime(
-        "%Y-%m-%dT%H:%M:%SZ"
-    )
+    expires = (datetime.now(tz=UTC) + timedelta(seconds=10)).strftime("%Y-%m-%dT%H:%M:%SZ")
     confirm = await ctx.request_human_input(
         prompt=f"Confirm deploy to {args.get('env', 'staging')}?",
         response_schema={"type": "object"},

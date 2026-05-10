@@ -317,9 +317,7 @@ class HandshakeDriver:
         )
 
 
-def consume_authenticate(
-    state: SessionState, envelope: Envelope
-) -> tuple[Envelope, bool]:
+def consume_authenticate(state: SessionState, envelope: Envelope) -> tuple[Envelope, bool]:
     """Process a follow-up ``session.authenticate``.
 
     Returns ``(response_envelope, accepted)``. v0.1 only uses this for
@@ -330,9 +328,7 @@ def consume_authenticate(
     try:
         payload = SessionAuthenticatePayload.model_validate(envelope.payload)
     except Exception as exc:
-        rejected = SessionRejectedPayload(
-            code=str(ErrorCode.INVALID_ARGUMENT), message=str(exc)
-        )
+        rejected = SessionRejectedPayload(code=str(ErrorCode.INVALID_ARGUMENT), message=str(exc))
         return (
             Envelope(
                 id=_new_id("msg"),

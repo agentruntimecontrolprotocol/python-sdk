@@ -49,7 +49,9 @@ async def test_heartbeat_lost_when_no_heartbeats(fast_runtime: ARCPRuntime) -> N
         transport=client_t,
         client_identity=Identity(kind="t", version="1"),
         auth=AuthBlock(scheme="bearer", token="good"),
-        capabilities=Capabilities(streaming=True, durable_jobs=True, human_input=True, artifacts=True, subscriptions=True),
+        capabilities=Capabilities(
+            streaming=True, durable_jobs=True, human_input=True, artifacts=True, subscriptions=True
+        ),
     )
     try:
         accepted = await client.open()
@@ -60,6 +62,7 @@ async def test_heartbeat_lost_when_no_heartbeats(fast_runtime: ARCPRuntime) -> N
             payload={"tool": "silent", "arguments": {}},
         )
         await client.send(invoke)
+
         # Wait for job.failed with HEARTBEAT_LOST.
         async def _await_failed() -> Envelope:
             async for env in client.events():
@@ -93,7 +96,9 @@ async def test_heartbeat_emitted_keeps_job_alive(fast_runtime: ARCPRuntime) -> N
         transport=client_t,
         client_identity=Identity(kind="t", version="1"),
         auth=AuthBlock(scheme="bearer", token="good"),
-        capabilities=Capabilities(streaming=True, durable_jobs=True, human_input=True, artifacts=True, subscriptions=True),
+        capabilities=Capabilities(
+            streaming=True, durable_jobs=True, human_input=True, artifacts=True, subscriptions=True
+        ),
     )
     try:
         accepted = await client.open()

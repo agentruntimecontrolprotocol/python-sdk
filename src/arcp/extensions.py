@@ -44,7 +44,18 @@ CORE_PREFIXES: frozenset[str] = frozenset(
 
 # Standalone (no dot) core message types per §6.2.
 CORE_STANDALONE: frozenset[str] = frozenset(
-    {"ping", "pong", "ack", "nack", "cancel", "interrupt", "resume", "backpressure", "log", "metric"}
+    {
+        "ping",
+        "pong",
+        "ack",
+        "nack",
+        "cancel",
+        "interrupt",
+        "resume",
+        "backpressure",
+        "log",
+        "metric",
+    }
 )
 
 

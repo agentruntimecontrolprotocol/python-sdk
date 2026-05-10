@@ -102,16 +102,10 @@ class ARCPRuntime:
     _dispatch: dict[str, DispatchHandler] = field(default_factory=dict[str, DispatchHandler])
     _tools: dict[str, ToolImpl] = field(default_factory=dict[str, ToolImpl])
     _job_managers: dict[str, JobManager] = field(default_factory=dict[str, JobManager])
-    _stream_managers: dict[str, StreamManager] = field(
-        default_factory=dict[str, StreamManager]
-    )
-    _lease_managers: dict[str, LeaseManager] = field(
-        default_factory=dict[str, LeaseManager]
-    )
+    _stream_managers: dict[str, StreamManager] = field(default_factory=dict[str, StreamManager])
+    _lease_managers: dict[str, LeaseManager] = field(default_factory=dict[str, LeaseManager])
     _subscription_manager: SubscriptionManager | None = None
-    _subscription_pumps: set[asyncio.Task[None]] = field(
-        default_factory=set[asyncio.Task[None]]
-    )
+    _subscription_pumps: set[asyncio.Task[None]] = field(default_factory=set[asyncio.Task[None]])
     _artifact_store: ArtifactStore | None = None
     _started: bool = False
 
@@ -177,9 +171,7 @@ class ARCPRuntime:
         self._dispatch[message_type] = handler
 
     def _register_default_handlers(self) -> None:
-        async def _handle_ping(
-            rt: ARCPRuntime, state: SessionState, env: Envelope
-        ) -> None:
+        async def _handle_ping(rt: ARCPRuntime, state: SessionState, env: Envelope) -> None:
             response = Envelope(
                 id=_new_msg_id(),
                 type="pong",
@@ -189,21 +181,15 @@ class ARCPRuntime:
             )
             await rt._send(state, response)
 
-        async def _handle_close(
-            rt: ARCPRuntime, state: SessionState, env: Envelope
-        ) -> None:
+        async def _handle_close(rt: ARCPRuntime, state: SessionState, env: Envelope) -> None:
             state.phase = SessionPhase.CLOSED
             await rt.event_log.append(env)
 
-        async def _handle_tool_invoke(
-            rt: ARCPRuntime, state: SessionState, env: Envelope
-        ) -> None:
+        async def _handle_tool_invoke(rt: ARCPRuntime, state: SessionState, env: Envelope) -> None:
             payload = ToolInvokePayload.model_validate(env.payload)
             impl = rt._tools.get(payload.tool)
             if impl is None:
-                raise ARCPError(
-                    ErrorCode.NOT_FOUND, f"tool {payload.tool!r} is not registered"
-                )
+                raise ARCPError(ErrorCode.NOT_FOUND, f"tool {payload.tool!r} is not registered")
             manager = rt._job_managers[state.session_id]
             await manager.submit(
                 session_id=state.session_id,
@@ -214,16 +200,12 @@ class ARCPRuntime:
                 trace_id=env.trace_id,
             )
 
-        async def _handle_cancel(
-            rt: ARCPRuntime, state: SessionState, env: Envelope
-        ) -> None:
+        async def _handle_cancel(rt: ARCPRuntime, state: SessionState, env: Envelope) -> None:
             payload = CancelPayload.model_validate(env.payload)
             manager = rt._job_managers[state.session_id]
             try:
                 if payload.target == "job":
-                    await manager.cancel(
-                        payload.target_id, deadline_ms=payload.deadline_ms
-                    )
+                    await manager.cancel(payload.target_id, deadline_ms=payload.deadline_ms)
                     accepted = Envelope(
                         id=_new_msg_id(),
                         type="cancel.accepted",
@@ -356,9 +338,7 @@ class ARCPRuntime:
             leases = rt._lease_managers[state.session_id]
             leases.revoke(payload.lease_id, reason=payload.reason)
 
-        async def _handle_subscribe(
-            rt: ARCPRuntime, state: SessionState, env: Envelope
-        ) -> None:
+        async def _handle_subscribe(rt: ARCPRuntime, state: SessionState, env: Envelope) -> None:
             from arcp.messages.subscriptions import SubscribeFilter
 
             payload = SubscribePayload.model_validate(env.payload)
@@ -388,9 +368,7 @@ class ARCPRuntime:
                 session_id=state.session_id,
                 correlation_id=env.id,
                 subscription_id=sub.subscription_id,
-                payload=SubscribeAcceptedPayload(
-                    subscription_id=sub.subscription_id
-                ).model_dump(),
+                payload=SubscribeAcceptedPayload(subscription_id=sub.subscription_id).model_dump(),
             )
             await rt._send(state, accepted_env)
 
@@ -415,9 +393,7 @@ class ARCPRuntime:
             rt._subscription_pumps.add(task)
             task.add_done_callback(rt._subscription_pumps.discard)
 
-        async def _handle_unsubscribe(
-            rt: ARCPRuntime, state: SessionState, env: Envelope
-        ) -> None:
+        async def _handle_unsubscribe(rt: ARCPRuntime, state: SessionState, env: Envelope) -> None:
             payload = UnsubscribePayload.model_validate(env.payload)
             sub = await rt.subscriptions.close(payload.subscription_id)
             closed = Envelope(
@@ -434,9 +410,7 @@ class ARCPRuntime:
             )
             await rt._send(state, closed)
 
-        async def _handle_artifact_put(
-            rt: ARCPRuntime, state: SessionState, env: Envelope
-        ) -> None:
+        async def _handle_artifact_put(rt: ARCPRuntime, state: SessionState, env: Envelope) -> None:
             payload = ArtifactPutPayload.model_validate(env.payload)
             record = await rt.artifacts.put(
                 session_id=state.session_id,
@@ -489,9 +463,7 @@ class ARCPRuntime:
             rt: ARCPRuntime, state: SessionState, env: Envelope
         ) -> None:
             payload = ArtifactReleasePayload.model_validate(env.payload)
-            await rt.artifacts.release(
-                session_id=state.session_id, artifact_id=payload.artifact_id
-            )
+            await rt.artifacts.release(session_id=state.session_id, artifact_id=payload.artifact_id)
             ack = Envelope(
                 id=_new_msg_id(),
                 type="ack",
@@ -501,9 +473,7 @@ class ARCPRuntime:
             )
             await rt._send(state, ack)
 
-        async def _handle_resume(
-            rt: ARCPRuntime, state: SessionState, env: Envelope
-        ) -> None:
+        async def _handle_resume(rt: ARCPRuntime, state: SessionState, env: Envelope) -> None:
             payload = ResumePayload.model_validate(env.payload)
             if payload.checkpoint_id is not None:
                 raise ARCPError(
@@ -739,7 +709,9 @@ class contextlib_suppress:  # noqa: N801 - module-private helper
     def __enter__(self) -> None:
         return None
 
-    def __exit__(self, exc_type: type[BaseException] | None, exc: BaseException | None, tb: object) -> bool:
+    def __exit__(
+        self, exc_type: type[BaseException] | None, exc: BaseException | None, tb: object
+    ) -> bool:
         return exc_type is not None and issubclass(exc_type, self._types)
 
 

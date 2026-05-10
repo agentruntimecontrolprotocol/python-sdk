@@ -73,8 +73,6 @@ def _ensure_dict(value: Any) -> dict[str, Any]:
     return {str(k): v for k, v in value.items()}  # pyright: ignore[reportUnknownVariableType, reportUnknownArgumentType]
 
 
-
-
 @dataclass
 class JobRecord:
     """Per-job runtime bookkeeping."""
@@ -125,9 +123,7 @@ class JobContext:
         )
         await self.sink(envelope)
 
-    async def progress(
-        self, *, percent: float | None = None, message: str | None = None
-    ) -> None:
+    async def progress(self, *, percent: float | None = None, message: str | None = None) -> None:
         envelope = Envelope(
             id=_new_msg_id(),
             type="job.progress",
@@ -207,9 +203,7 @@ class JobContext:
         )
         await self.sink(envelope)
 
-    async def stream_error(
-        self, stream_id: str, *, code: ErrorCode, message: str
-    ) -> None:
+    async def stream_error(self, stream_id: str, *, code: ErrorCode, message: str) -> None:
         self.streams.close(stream_id)
         envelope = Envelope(
             id=_new_msg_id(),
@@ -296,9 +290,7 @@ class JobContext:
             )
             await self.sink(cancelled)
             self.job.state = prior_state
-            raise ARCPError(
-                ErrorCode.DEADLINE_EXCEEDED, "human input request expired"
-            ) from exc
+            raise ARCPError(ErrorCode.DEADLINE_EXCEEDED, "human input request expired") from exc
         self.job.state = prior_state
         return _ensure_dict(response.get("value"))
 
@@ -341,15 +333,11 @@ class JobContext:
             self.job.state = prior_state
             if default_choice_id is not None:
                 return default_choice_id
-            raise ARCPError(
-                ErrorCode.DEADLINE_EXCEEDED, "human choice request expired"
-            ) from exc
+            raise ARCPError(ErrorCode.DEADLINE_EXCEEDED, "human choice request expired") from exc
         self.job.state = prior_state
         choice_id = response.get("choice_id")
         if not isinstance(choice_id, str):
-            raise ARCPError(
-                ErrorCode.INVALID_ARGUMENT, "choice response missing choice_id"
-            )
+            raise ARCPError(ErrorCode.INVALID_ARGUMENT, "choice response missing choice_id")
         if not any(opt.id == choice_id for opt in options):
             raise ARCPError(
                 ErrorCode.INVALID_ARGUMENT,
@@ -412,9 +400,7 @@ class JobManager:
     heartbeat_recovery: str = "fail"
     miss_threshold: int = 2
     _jobs: dict[str, JobRecord] = field(default_factory=dict[str, JobRecord])
-    _hard_kill_tasks: set[asyncio.Task[None]] = field(
-        default_factory=set[asyncio.Task[None]]
-    )
+    _hard_kill_tasks: set[asyncio.Task[None]] = field(default_factory=set[asyncio.Task[None]])
 
     def get(self, job_id: str) -> JobRecord:
         record = self._jobs.get(job_id)
@@ -546,9 +532,7 @@ class JobManager:
             )
         )
 
-    async def _emit_failed(
-        self, job: JobRecord, *, code: ErrorCode, message: str
-    ) -> None:
+    async def _emit_failed(self, job: JobRecord, *, code: ErrorCode, message: str) -> None:
         job.state = "failed"
         await self.sink(
             Envelope(
@@ -588,9 +572,9 @@ class JobManager:
                 job_id=job.job_id,
                 correlation_id=job.correlation_id,
                 trace_id=job.trace_id,
-                payload=JobCancelledPayload(reason=reason, code=str(ErrorCode.CANCELLED)).model_dump(
-                    exclude_none=True
-                ),
+                payload=JobCancelledPayload(
+                    reason=reason, code=str(ErrorCode.CANCELLED)
+                ).model_dump(exclude_none=True),
             )
         )
 
@@ -599,9 +583,7 @@ class JobManager:
 
         job = self.get(job_id)
         if job.state in ("completed", "failed", "cancelled"):
-            raise ARCPError(
-                ErrorCode.FAILED_PRECONDITION, f"job {job_id!r} is already terminal"
-            )
+            raise ARCPError(ErrorCode.FAILED_PRECONDITION, f"job {job_id!r} is already terminal")
         job.cancellation.set()
         job.cancellation_deadline_ms = deadline_ms
 
@@ -625,9 +607,7 @@ class JobManager:
 
         job = self.get(job_id)
         if job.state not in ("running", "blocked", "queued"):
-            raise ARCPError(
-                ErrorCode.FAILED_PRECONDITION, f"job {job_id!r} not interruptible"
-            )
+            raise ARCPError(ErrorCode.FAILED_PRECONDITION, f"job {job_id!r} not interruptible")
         job.interrupt.set()
         job.interrupt_prompt = prompt
 

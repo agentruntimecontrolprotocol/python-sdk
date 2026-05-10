@@ -67,9 +67,7 @@ def _default_caps() -> Capabilities:
 @main.command()
 @click.option("--transport", type=click.Choice(["ws"]), default="ws")
 @click.option("--bind", default="127.0.0.1:7777")
-@click.option(
-    "--token", multiple=True, help="bearer token in the form 'token=principal'."
-)
+@click.option("--token", multiple=True, help="bearer token in the form 'token=principal'.")
 def serve(transport: str, bind: str, token: tuple[str, ...]) -> None:
     """Start an ARCP runtime listening on ``--bind``."""
 
@@ -99,6 +97,7 @@ def serve(transport: str, bind: str, token: tuple[str, ...]) -> None:
     async def _run() -> None:
         await rt.start()
         click.echo(f"arcp runtime listening on {transport}://{host}:{port}")
+
         async def _handler(ws: Any) -> None:
             await rt.serve_session(WebSocketTransport(ws))
 
@@ -157,9 +156,7 @@ def replay(db: str, session_id: str, after_message_id: str | None) -> None:
         log = EventLog(Path(db))
         await log.open()
         try:
-            async for env in log.replay(
-                session_id=session_id, after_message_id=after_message_id
-            ):
+            async for env in log.replay(session_id=session_id, after_message_id=after_message_id):
                 click.echo(json.dumps(env.to_wire()))
         finally:
             await log.close()

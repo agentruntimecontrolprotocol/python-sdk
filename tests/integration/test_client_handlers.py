@@ -16,9 +16,7 @@ from arcp.runtime.server import ARCPRuntime
 
 
 def _iso_in(secs: float) -> str:
-    return (datetime.now(tz=UTC) + timedelta(seconds=secs)).strftime(
-        "%Y-%m-%dT%H:%M:%SZ"
-    )
+    return (datetime.now(tz=UTC) + timedelta(seconds=secs)).strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
 @pytest.mark.asyncio
@@ -82,9 +80,7 @@ async def test_client_handlers_grant_via_helper(
     client, runtime, _ = connected
 
     async def writer(ctx: JobContext, args: dict[str, Any]) -> dict[str, Any]:
-        return await ctx.request_permission(
-            permission="x.write", requested_lease_seconds=60
-        )
+        return await ctx.request_permission(permission="x.write", requested_lease_seconds=60)
 
     runtime.register_tool("writer_h", writer)
     accepted = await client.open()

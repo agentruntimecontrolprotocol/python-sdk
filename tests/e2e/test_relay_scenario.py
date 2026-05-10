@@ -37,9 +37,7 @@ async def _deploy(ctx: JobContext, args: dict[str, Any]) -> dict[str, Any]:
         operation="rollout",
         requested_lease_seconds=60,
     )
-    expires = (datetime.now(tz=UTC) + timedelta(seconds=10)).strftime(
-        "%Y-%m-%dT%H:%M:%SZ"
-    )
+    expires = (datetime.now(tz=UTC) + timedelta(seconds=10)).strftime("%Y-%m-%dT%H:%M:%SZ")
     confirm = await ctx.request_human_input(
         prompt="confirm?",
         response_schema={"type": "object"},
@@ -129,13 +127,13 @@ async def test_relay_scenario_websocket() -> None:
         transport=transport,
         client_identity=Identity(kind="t", version="1"),
         auth=AuthBlock(scheme="bearer", token="good"),
-        capabilities=Capabilities(streaming=True, human_input=True, artifacts=True, subscriptions=True),
+        capabilities=Capabilities(
+            streaming=True, human_input=True, artifacts=True, subscriptions=True
+        ),
     )
     try:
         accepted = await client.open()
-        artifact_id = await asyncio.wait_for(
-            _client_loop(client, accepted.session_id), timeout=5.0
-        )
+        artifact_id = await asyncio.wait_for(_client_loop(client, accepted.session_id), timeout=5.0)
         assert artifact_id is not None
         assert artifact_id.startswith("art_")
     finally:
@@ -158,13 +156,13 @@ async def test_relay_scenario_stdio() -> None:
         transport=client_t,
         client_identity=Identity(kind="t", version="1"),
         auth=AuthBlock(scheme="bearer", token="good"),
-        capabilities=Capabilities(streaming=True, human_input=True, artifacts=True, subscriptions=True),
+        capabilities=Capabilities(
+            streaming=True, human_input=True, artifacts=True, subscriptions=True
+        ),
     )
     try:
         accepted = await client.open()
-        artifact_id = await asyncio.wait_for(
-            _client_loop(client, accepted.session_id), timeout=5.0
-        )
+        artifact_id = await asyncio.wait_for(_client_loop(client, accepted.session_id), timeout=5.0)
         assert artifact_id is not None
         assert artifact_id.startswith("art_")
     finally:

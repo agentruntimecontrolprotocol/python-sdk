@@ -86,7 +86,9 @@ async def test_stdio_full_lifecycle() -> None:
         transport=client_t,
         client_identity=Identity(kind="t", version="1"),
         auth=AuthBlock(scheme="bearer", token="good"),
-        capabilities=Capabilities(streaming=True, human_input=True, artifacts=True, subscriptions=True),
+        capabilities=Capabilities(
+            streaming=True, human_input=True, artifacts=True, subscriptions=True
+        ),
     )
     try:
         accepted = await client.open()

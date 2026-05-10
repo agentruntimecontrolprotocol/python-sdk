@@ -32,8 +32,7 @@ class Transport(ABC):
 
     @property
     @abstractmethod
-    def is_closed(self) -> bool:
-        ...
+    def is_closed(self) -> bool: ...
 
 
 __all__ = ["Transport", "TransportClosed"]

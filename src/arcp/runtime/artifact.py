@@ -54,17 +54,15 @@ class ArtifactStore:
         try:
             blob = base64.b64decode(data_b64, validate=True)
         except (ValueError, binascii.Error) as exc:
-            raise ARCPError(
-                ErrorCode.INVALID_ARGUMENT, f"data is not valid base64: {exc}"
-            ) from exc
+            raise ARCPError(ErrorCode.INVALID_ARGUMENT, f"data is not valid base64: {exc}") from exc
         digest = hashlib.sha256(blob).hexdigest()
         if sha256 is not None and sha256 != digest:
             raise ARCPError(ErrorCode.INVALID_ARGUMENT, "sha256 does not match payload")
         artifact_id = f"art_{uuid.uuid4().hex[:12]}"
         if expires_at is None:
-            expires_at = (
-                datetime.now(tz=UTC) + timedelta(seconds=self._default)
-            ).strftime("%Y-%m-%dT%H:%M:%S.%f")[:-3] + "Z"
+            expires_at = (datetime.now(tz=UTC) + timedelta(seconds=self._default)).strftime(
+                "%Y-%m-%dT%H:%M:%S.%f"
+            )[:-3] + "Z"
 
         conn = self._event_log.connection
         await conn.execute(
