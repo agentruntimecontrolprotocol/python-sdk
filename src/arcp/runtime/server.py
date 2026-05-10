@@ -24,12 +24,20 @@ from arcp.envelope import Envelope
 from arcp.errors import ARCPError, ErrorCode
 from arcp.extensions import classify_unknown
 from arcp.messages import validate_payload
+from arcp.messages.control import (
+    CancelAcceptedPayload,
+    CancelPayload,
+    CancelRefusedPayload,
+)
+from arcp.messages.execution import ToolInvokePayload
 from arcp.messages.session import (
     Capabilities,
     RuntimeIdentity,
     SessionUnauthenticatedPayload,
 )
+from arcp.runtime.job import JobManager
 from arcp.runtime.session import HandshakeDriver, SessionPhase, SessionState
+from arcp.runtime.stream import StreamManager
 from arcp.store.eventlog import EventLog
 from arcp.transport.base import Transport, TransportClosed
 
@@ -46,6 +54,15 @@ class RuntimeConfig:
     jwt_validator: Any | None = None
     event_log_path: str = ":memory:"
     session_lifetime_seconds: int = 3600
+    # Internal heartbeat-watchdog interval (seconds). Overrides
+    # ``advertised_capabilities.heartbeat_interval_seconds`` for testing where
+    # 30-second intervals are impractical. Use an int that floors at 1 in
+    # production; tests may pass a float via :attr:`heartbeat_interval_override`.
+    heartbeat_interval_override: float | None = None
+    heartbeat_miss_threshold: int = 2
+
+
+ToolImpl = Callable[[Any, dict[str, Any]], Awaitable[Any]]
 
 
 @dataclass
@@ -57,7 +74,23 @@ class ARCPRuntime:
     _handshake: HandshakeDriver | None = None
     _sessions: dict[str, SessionState] = field(default_factory=dict[str, SessionState])
     _dispatch: dict[str, DispatchHandler] = field(default_factory=dict[str, DispatchHandler])
+    _tools: dict[str, ToolImpl] = field(default_factory=dict[str, ToolImpl])
+    _job_managers: dict[str, JobManager] = field(default_factory=dict[str, JobManager])
+    _stream_managers: dict[str, StreamManager] = field(
+        default_factory=dict[str, StreamManager]
+    )
     _started: bool = False
+
+    def register_tool(self, name: str, impl: ToolImpl) -> None:
+        """Register an async tool implementation by name."""
+
+        self._tools[name] = impl
+
+    def get_job_manager(self, session_id: str) -> JobManager:
+        manager = self._job_managers.get(session_id)
+        if manager is None:
+            raise RuntimeError(f"no job manager bound for session {session_id!r}")
+        return manager
 
     async def start(self) -> None:
         if self._started:
@@ -109,8 +142,69 @@ class ARCPRuntime:
             state.phase = SessionPhase.CLOSED
             await rt.event_log.append(env)
 
+        async def _handle_tool_invoke(
+            rt: ARCPRuntime, state: SessionState, env: Envelope
+        ) -> None:
+            payload = ToolInvokePayload.model_validate(env.payload)
+            impl = rt._tools.get(payload.tool)
+            if impl is None:
+                raise ARCPError(
+                    ErrorCode.NOT_FOUND, f"tool {payload.tool!r} is not registered"
+                )
+            manager = rt._job_managers[state.session_id]
+            await manager.submit(
+                session_id=state.session_id,
+                tool_name=payload.tool,
+                arguments=dict(payload.arguments),
+                impl=impl,
+                correlation_id=env.id,
+                trace_id=env.trace_id,
+            )
+
+        async def _handle_cancel(
+            rt: ARCPRuntime, state: SessionState, env: Envelope
+        ) -> None:
+            payload = CancelPayload.model_validate(env.payload)
+            manager = rt._job_managers[state.session_id]
+            try:
+                if payload.target == "job":
+                    await manager.cancel(
+                        payload.target_id, deadline_ms=payload.deadline_ms
+                    )
+                    accepted = Envelope(
+                        id=_new_msg_id(),
+                        type="cancel.accepted",
+                        session_id=state.session_id,
+                        correlation_id=env.id,
+                        payload=CancelAcceptedPayload(
+                            target=payload.target, target_id=payload.target_id
+                        ).model_dump(),
+                    )
+                    await rt._send(state, accepted)
+                else:
+                    raise ARCPError(
+                        ErrorCode.UNIMPLEMENTED,
+                        f"cancel target {payload.target!r} not supported in v0.1",
+                    )
+            except ARCPError as exc:
+                refused = Envelope(
+                    id=_new_msg_id(),
+                    type="cancel.refused",
+                    session_id=state.session_id,
+                    correlation_id=env.id,
+                    payload=CancelRefusedPayload(
+                        target=payload.target,
+                        target_id=payload.target_id,
+                        code=str(exc.code),
+                        message=exc.message,
+                    ).model_dump(),
+                )
+                await rt._send(state, refused)
+
         self.register_handler("ping", _handle_ping)
         self.register_handler("session.close", _handle_close)
+        self.register_handler("tool.invoke", _handle_tool_invoke)
+        self.register_handler("cancel", _handle_cancel)
 
     async def serve_session(self, transport: Transport) -> None:
         """Drive a full session over ``transport`` until close.
@@ -186,6 +280,25 @@ class ARCPRuntime:
             return None
         self._sessions[result.state.session_id] = result.state
         self._bind_transport(result.state.session_id, transport)
+        streams = StreamManager()
+        self._stream_managers[result.state.session_id] = streams
+        bound_state = result.state
+
+        async def _sink(env: Envelope) -> None:
+            await self._send(bound_state, env)
+
+        hb_interval: float = (
+            self.config.heartbeat_interval_override
+            if self.config.heartbeat_interval_override is not None
+            else float(self.config.advertised_capabilities.heartbeat_interval_seconds)
+        )
+        self._job_managers[result.state.session_id] = JobManager(
+            sink=_sink,
+            streams=streams,
+            heartbeat_interval_seconds=hb_interval,
+            heartbeat_recovery=self.config.advertised_capabilities.heartbeat_recovery,
+            miss_threshold=self.config.heartbeat_miss_threshold,
+        )
         await self.event_log.append(envelope)
         await self.event_log.append(result.response)
         return result.state
