@@ -70,6 +70,10 @@ filterwarnings = [
 [tool.coverage.run]
 source = ["arcp"]
 branch = true
+omit = [
+    # The CLI is a thin click wrapper and is exercised end-to-end out of band.
+    "src/arcp/cli.py",
+]
 
 [tool.coverage.report]
 show_missing = true

@@ -17,7 +17,7 @@ from arcp.transport.stdio import StdioTransport
 from tests.integration.conftest import default_advertised
 
 
-def _wire_pair() -> tuple[StdioTransport, StdioTransport]:
+def make_stdio_pipe_pair() -> tuple[StdioTransport, StdioTransport]:
     """Create two StdioTransport endpoints connected by in-memory pipes."""
 
     loop = asyncio.get_running_loop()
@@ -79,7 +79,7 @@ async def test_stdio_full_lifecycle() -> None:
 
     rt.register_tool("echo", echo)
 
-    client_t, server_t = _wire_pair()
+    client_t, server_t = make_stdio_pipe_pair()
     server_task = asyncio.create_task(rt.serve_session(server_t))
 
     client = ARCPClient(
