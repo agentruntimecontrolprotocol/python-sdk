@@ -42,6 +42,9 @@ strict = ["src/arcp"]
 pythonVersion = "3.13"
 typeCheckingMode = "strict"
 reportMissingTypeStubs = false
+# Use the local uv-managed venv so third-party imports resolve when analyzing from this directory.
+venvPath = "."
+venv = ".venv"
 
 [tool.ruff]
 line-length = 100
@@ -99,7 +102,7 @@ indent-style = "space"
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 asyncio_mode = "auto"
-addopts = "-ra --strict-markers --strict-config"
+addopts = "-ra --strict-markers --strict-config --cov=arcp --cov-fail-under=90"
 filterwarnings = [
     "error",
     "ignore::DeprecationWarning",

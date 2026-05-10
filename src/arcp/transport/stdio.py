@@ -54,13 +54,16 @@ class StdioTransport(Transport):
         return self._closed
 
 
-async def connect_stdio_pipe() -> StdioTransport:
+async def connect_stdio_pipe() -> StdioTransport:  # pragma: no cover - sys.stdin/stdout helper
     """Wrap ``sys.stdin``/``sys.stdout`` as a transport.
 
     Reads lines from stdin and writes lines to stdout. Useful for subprocess
     integration where the parent runtime spawns a child agent.
-    """
 
+    Excluded from coverage because it touches process-wide sys.stdin/stdout and
+    needs a subprocess fixture; the transport's I/O behavior is unit-tested via
+    ``tests/unit/test_stdio_transport_unit.py`` against an in-process pipe pair.
+    """
     loop = asyncio.get_running_loop()
     reader = asyncio.StreamReader()
     protocol = asyncio.StreamReaderProtocol(reader)

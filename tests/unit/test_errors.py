@@ -17,7 +17,7 @@ def test_every_error_code_is_string(code: ErrorCode) -> None:
 
 
 @pytest.mark.parametrize(
-    "code,expected",
+    ("code", "expected"),
     [
         (ErrorCode.RESOURCE_EXHAUSTED, True),
         (ErrorCode.UNAVAILABLE, True),
