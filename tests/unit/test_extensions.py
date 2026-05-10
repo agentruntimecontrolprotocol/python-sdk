@@ -21,7 +21,7 @@ from arcp.extensions import (
         "arcpx.acme.workflow.v1",
         "arcpx.example.thing.v9",
         "com.acme.workflow.v2",
-        "io.openclaw.runtime.v1",
+        "arcpx.example.runtime.v1",
     ],
 )
 def test_valid_extension_names(name: str) -> None:
