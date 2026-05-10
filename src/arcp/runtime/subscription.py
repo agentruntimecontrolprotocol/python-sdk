@@ -38,10 +38,10 @@ def _passes_filter(envelope: Envelope, filt: SubscribeFilter) -> bool:
         return False
     if filt.types and envelope.type not in filt.types:
         return False
-    if filt.min_priority is not None:
-        if PRIORITY_RANK[envelope.priority] < PRIORITY_RANK[filt.min_priority]:
-            return False
-    return True
+    return (
+        filt.min_priority is None
+        or PRIORITY_RANK[envelope.priority] >= PRIORITY_RANK[filt.min_priority]
+    )
 
 
 @dataclass

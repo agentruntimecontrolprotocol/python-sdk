@@ -7,6 +7,7 @@ Used for shim integrations and subprocess-based tests.
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import json
 import sys
 from typing import Any, cast, override
@@ -44,10 +45,8 @@ class StdioTransport(Transport):
         if self._closed:
             return
         self._closed = True
-        try:
+        with contextlib.suppress(Exception):
             self._writer.close()
-        except Exception:
-            pass
 
     @property
     @override

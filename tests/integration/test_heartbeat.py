@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import contextlib
 from collections.abc import AsyncIterator
 from typing import Any
 
@@ -75,10 +76,8 @@ async def test_heartbeat_lost_when_no_heartbeats(fast_runtime: ARCPRuntime) -> N
     finally:
         await client.close()
         server_task.cancel()
-        try:
+        with contextlib.suppress(BaseException):
             await server_task
-        except BaseException:
-            pass
 
 
 @pytest.mark.asyncio
@@ -119,7 +118,5 @@ async def test_heartbeat_emitted_keeps_job_alive(fast_runtime: ARCPRuntime) -> N
     finally:
         await client.close()
         server_task.cancel()
-        try:
+        with contextlib.suppress(BaseException):
             await server_task
-        except BaseException:
-            pass

@@ -7,6 +7,7 @@ text frame, JSON-encoded.
 
 from __future__ import annotations
 
+import contextlib
 import json
 from typing import Any, cast, override
 
@@ -52,10 +53,8 @@ class WebSocketTransport(Transport):
         if self._closed:
             return
         self._closed = True
-        try:
+        with contextlib.suppress(Exception):
             await self._ws.close()
-        except Exception:
-            pass
 
     @property
     @override

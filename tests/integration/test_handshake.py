@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import contextlib
 
 import pytest
 
@@ -52,10 +53,8 @@ async def test_bearer_bad_token_rejected() -> None:
         assert exc_info.value.code == ErrorCode.UNAUTHENTICATED
         await client.close()
         task.cancel()
-        try:
+        with contextlib.suppress(BaseException):
             await task
-        except BaseException:
-            pass
     finally:
         await rt.close()
 
@@ -83,10 +82,8 @@ async def test_anonymous_rejected_without_negotiation() -> None:
         assert exc.value.code == ErrorCode.UNAUTHENTICATED
         await client.close()
         task.cancel()
-        try:
+        with contextlib.suppress(BaseException):
             await task
-        except BaseException:
-            pass
     finally:
         await rt.close()
 
@@ -114,10 +111,8 @@ async def test_anonymous_accepted_when_negotiated() -> None:
         assert accepted.capabilities.anonymous is True
         await client.close()
         task.cancel()
-        try:
+        with contextlib.suppress(BaseException):
             await task
-        except BaseException:
-            pass
     finally:
         await rt.close()
 
@@ -146,10 +141,8 @@ async def test_required_unsupported_capability_rejected() -> None:
         assert exc.value.code == ErrorCode.UNIMPLEMENTED
         await client.close()
         task.cancel()
-        try:
+        with contextlib.suppress(BaseException):
             await task
-        except BaseException:
-            pass
     finally:
         await rt.close()
 
@@ -178,10 +171,8 @@ async def test_pre_acceptance_message_dropped() -> None:
         assert env.correlation_id == "msg_ping_first"
         await client_t.close()
         task.cancel()
-        try:
+        with contextlib.suppress(BaseException):
             await task
-        except BaseException:
-            pass
     finally:
         await rt.close()
 

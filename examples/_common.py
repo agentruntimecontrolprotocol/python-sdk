@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import asyncio
 from collections.abc import AsyncIterator
-from contextlib import asynccontextmanager
+from contextlib import asynccontextmanager, suppress
 
 from arcp.auth.bearer import StaticTokenValidator
 from arcp.client.client import ARCPClient
@@ -57,8 +57,6 @@ async def runtime_and_client() -> AsyncIterator[tuple[ARCPRuntime, ARCPClient]]:
     finally:
         await client.close()
         server_task.cancel()
-        try:
+        with suppress(BaseException):
             await server_task
-        except BaseException:
-            pass
         await rt.close()

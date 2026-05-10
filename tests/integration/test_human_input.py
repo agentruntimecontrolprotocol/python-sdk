@@ -46,12 +46,11 @@ async def test_human_input_happy_path(
     client, runtime, _ = connected
 
     async def asker(ctx: JobContext, args: dict[str, Any]) -> dict[str, Any]:
-        result = await ctx.request_human_input(
+        return await ctx.request_human_input(
             prompt="What branch?",
             response_schema={"type": "object"},
             expires_at=_iso_in_seconds(5),
         )
-        return result
 
     runtime.register_tool("asker", asker)
     accepted = await client.open()

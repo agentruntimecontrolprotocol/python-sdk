@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import asyncio
 import base64
+import contextlib
 from datetime import UTC, datetime, timedelta
 from typing import Any
 
@@ -139,10 +140,8 @@ async def test_relay_scenario_websocket() -> None:
     finally:
         await client.close()
         server.close()
-        try:
+        with contextlib.suppress(Exception):
             await server.wait_closed()
-        except Exception:
-            pass
         await rt.close()
 
 
@@ -168,8 +167,6 @@ async def test_relay_scenario_stdio() -> None:
     finally:
         await client.close()
         server_task.cancel()
-        try:
+        with contextlib.suppress(BaseException):
             await server_task
-        except BaseException:
-            pass
         await rt.close()

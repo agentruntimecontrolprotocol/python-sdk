@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import contextlib
 from collections.abc import AsyncIterator
 
 import pytest
@@ -69,7 +70,5 @@ async def connected(
     finally:
         await client.close()
         server_task.cancel()
-        try:
+        with contextlib.suppress(BaseException):
             await server_task
-        except BaseException:
-            pass

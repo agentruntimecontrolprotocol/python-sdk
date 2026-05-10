@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import contextlib
 from typing import Any
 
 import pytest
@@ -77,8 +78,6 @@ async def test_websocket_full_lifecycle() -> None:
     finally:
         await client.close()
         server.close()
-        try:
+        with contextlib.suppress(Exception):
             await server.wait_closed()
-        except Exception:
-            pass
         await rt.close()

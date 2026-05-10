@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import contextlib
 from typing import Any
 
 import pytest
@@ -111,8 +112,6 @@ async def test_stdio_full_lifecycle() -> None:
     finally:
         await client.close()
         server_task.cancel()
-        try:
+        with contextlib.suppress(BaseException):
             await server_task
-        except BaseException:
-            pass
         await rt.close()

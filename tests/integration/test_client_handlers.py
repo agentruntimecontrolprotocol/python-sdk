@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import contextlib
 from datetime import UTC, datetime, timedelta
 from typing import Any
 
@@ -66,10 +67,8 @@ async def test_client_handlers_resolve_human_input(
     await client.send(invoke)
     final = await asyncio.wait_for(completion, timeout=3.0)
     pump.cancel()
-    try:
+    with contextlib.suppress(BaseException):
         await pump
-    except BaseException:
-        pass
     assert final.type == "job.completed"
 
 
@@ -101,7 +100,5 @@ async def test_client_handlers_grant_via_helper(
     # The pump owns events; let it run a bit then cancel.
     await asyncio.sleep(0.5)
     pump.cancel()
-    try:
+    with contextlib.suppress(BaseException):
         await pump
-    except BaseException:
-        pass
