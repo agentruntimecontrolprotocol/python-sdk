@@ -28,6 +28,7 @@ class WebSocketTransport(Transport):
 
     @override
     async def send(self, envelope: dict[str, Any]) -> None:
+        """Send."""
         if self._closed:
             raise TransportClosed("transport is closed")
         try:
@@ -38,6 +39,7 @@ class WebSocketTransport(Transport):
 
     @override
     async def recv(self) -> dict[str, Any]:
+        """Recv."""
         try:
             raw = await self._ws.recv()
         except websockets.ConnectionClosed as exc:
@@ -50,6 +52,7 @@ class WebSocketTransport(Transport):
 
     @override
     async def close(self) -> None:
+        """Close."""
         if self._closed:
             return
         self._closed = True
@@ -59,12 +62,12 @@ class WebSocketTransport(Transport):
     @property
     @override
     def is_closed(self) -> bool:
+        """Is closed."""
         return self._closed
 
 
 async def connect_websocket(uri: str) -> WebSocketTransport:
     """Connect to ``uri`` (e.g. ``ws://localhost:7777``) and wrap in a transport."""
-
     ws = await connect(uri)
     return WebSocketTransport(ws)
 

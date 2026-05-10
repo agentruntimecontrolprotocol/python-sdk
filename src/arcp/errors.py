@@ -52,7 +52,6 @@ _RETRYABLE_DEFAULTS: frozenset[ErrorCode] = frozenset(
 
 def is_retryable_default(code: ErrorCode) -> bool:
     """Return the default retryability classification for ``code`` per RFC §18.3."""
-
     return code in _RETRYABLE_DEFAULTS
 
 
@@ -84,7 +83,6 @@ class ARCPError(Exception):
 
     def to_payload(self) -> dict[str, Any]:
         """Serialize to the §18.1 error payload shape."""
-
         payload: dict[str, Any] = {
             "code": str(self.code),
             "message": self.message,

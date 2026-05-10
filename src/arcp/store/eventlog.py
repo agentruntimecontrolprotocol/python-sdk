@@ -35,11 +35,11 @@ class EventLog:
 
     @property
     def path(self) -> str:
+        """Path."""
         return self._path
 
     async def open(self) -> None:
         """Open the SQLite connection and ensure the schema is present."""
-
         if self._db is not None:
             return
         self._db = await aiosqlite.connect(self._path)
@@ -50,6 +50,7 @@ class EventLog:
         await self._db.commit()
 
     async def close(self) -> None:
+        """Close."""
         if self._db is not None:
             await self._db.close()
             self._db = None
@@ -70,7 +71,6 @@ class EventLog:
     @property
     def connection(self) -> aiosqlite.Connection:
         """Expose the underlying connection for sibling stores (e.g. artifacts)."""
-
         return self._conn
 
     async def append(self, envelope: Envelope) -> bool:
@@ -79,7 +79,6 @@ class EventLog:
         Returns ``True`` if the row was inserted, ``False`` if it already
         existed (i.e. a transport retransmit was deduplicated per §6.4).
         """
-
         wire = envelope.to_wire()
         body = json.dumps(wire, separators=(",", ":"), sort_keys=True)
         cursor = await self._conn.execute(
@@ -122,7 +121,6 @@ class EventLog:
         strictly greater than that of the matching row are returned, matching
         the §19 ``after_message_id`` semantics.
         """
-
         anchor_rowid = 0
         if after_message_id is not None:
             row = await self._fetchone(
@@ -150,7 +148,6 @@ class EventLog:
 
     async def has_message(self, *, session_id: str | None, message_id: str) -> bool:
         """Return ``True`` iff ``message_id`` is present for ``session_id``."""
-
         row = await self._fetchone(
             "SELECT 1 FROM events WHERE id = ? AND (session_id = ? OR ? IS NULL)",
             (message_id, session_id, session_id),
@@ -166,7 +163,6 @@ class EventLog:
         created_at: str,
     ) -> bool:
         """Persist a logical-intent result. Returns ``False`` if already stored."""
-
         cursor = await self._conn.execute(
             """
             INSERT OR IGNORE INTO idempotency_results
@@ -189,7 +185,6 @@ class EventLog:
         self, *, principal: str, idempotency_key: str
     ) -> dict[str, Any] | None:
         """Return a stored logical-intent result, or ``None`` if absent."""
-
         row = await self._fetchone(
             "SELECT result_envelope FROM idempotency_results "
             "WHERE principal = ? AND idempotency_key = ?",
@@ -206,7 +201,6 @@ class EventLog:
         Returns the number of rows removed. Used for the configured retention
         horizon described in §19.
         """
-
         cursor = await self._conn.execute(
             "DELETE FROM events WHERE timestamp < ?", (retention_anchor,)
         )
@@ -217,7 +211,6 @@ class EventLog:
 
     async def append_all(self, envelopes: Iterable[Envelope]) -> int:
         """Bulk-append. Returns the count actually inserted (post-dedup)."""
-
         count = 0
         for env in envelopes:
             if await self.append(env):

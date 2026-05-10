@@ -17,6 +17,8 @@ class PermissionRequestPayload(BaseModel):
 
 
 class PermissionGrantPayload(BaseModel):
+    """``permission grant`` payload."""
+
     model_config = ConfigDict(extra="forbid")
     permission: str
     resource: str | None = None
@@ -25,6 +27,8 @@ class PermissionGrantPayload(BaseModel):
 
 
 class PermissionDenyPayload(BaseModel):
+    """``permission deny`` payload."""
+
     model_config = ConfigDict(extra="forbid")
     permission: str
     reason: str | None = None
@@ -44,12 +48,16 @@ class LeaseGrantedPayload(BaseModel):
 
 
 class LeaseExtendedPayload(BaseModel):
+    """``lease extended`` payload."""
+
     model_config = ConfigDict(extra="forbid")
     lease_id: str
     expires_at: str
 
 
 class LeaseRevokedPayload(BaseModel):
+    """``lease revoked`` payload."""
+
     model_config = ConfigDict(extra="forbid")
     lease_id: str
     reason: str | None = None
@@ -57,6 +65,8 @@ class LeaseRevokedPayload(BaseModel):
 
 
 class LeaseRefreshPayload(BaseModel):
+    """``lease refresh`` payload."""
+
     model_config = ConfigDict(extra="forbid")
     lease_id: str
     extension_seconds: int = Field(default=300, ge=1)

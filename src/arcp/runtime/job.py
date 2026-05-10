@@ -55,7 +55,6 @@ def _new_job_id() -> str:
 
 def _seconds_until(iso_timestamp: str) -> float:
     """Return seconds from now until ``iso_timestamp`` (RFC 3339, UTC)."""
-
     from datetime import UTC, datetime
 
     normalized = (
@@ -106,7 +105,6 @@ class JobContext:
 
     async def heartbeat(self, *, deadline_ms: int = 60_000) -> None:
         """Emit a `job.heartbeat` envelope (§10.3)."""
-
         self.job.heartbeat_sequence += 1
         self.job.last_heartbeat = asyncio.get_running_loop().time()
         envelope = Envelope(
@@ -124,6 +122,7 @@ class JobContext:
         await self.sink(envelope)
 
     async def progress(self, *, percent: float | None = None, message: str | None = None) -> None:
+        """Progress."""
         envelope = Envelope(
             id=_new_msg_id(),
             type="job.progress",
@@ -143,6 +142,7 @@ class JobContext:
         content_type: str | None = None,
         stream_id: str | None = None,
     ) -> str:
+        """Open stream."""
         state = self.streams.open(
             session_id=self.job.session_id,
             job_id=self.job.job_id,
@@ -172,6 +172,7 @@ class JobContext:
         role: str | None = None,
         redacted: bool | None = None,
     ) -> None:
+        """Chunk."""
         await self.streams.throttle(stream_id)
         seq = self.streams.next_sequence(stream_id)
         payload = StreamChunkPayload(
@@ -192,6 +193,7 @@ class JobContext:
         await self.sink(envelope)
 
     async def close_stream(self, stream_id: str, *, reason: str | None = None) -> None:
+        """Close stream."""
         self.streams.close(stream_id)
         envelope = Envelope(
             id=_new_msg_id(),
@@ -204,6 +206,7 @@ class JobContext:
         await self.sink(envelope)
 
     async def stream_error(self, stream_id: str, *, code: ErrorCode, message: str) -> None:
+        """Stream error."""
         self.streams.close(stream_id)
         envelope = Envelope(
             id=_new_msg_id(),
@@ -219,7 +222,6 @@ class JobContext:
 
     def check_cancel(self) -> None:
         """Raise :class:`ARCPError` ``CANCELLED`` if cancellation has been requested."""
-
         if self.job.cancellation.is_set():
             raise ARCPError(ErrorCode.CANCELLED, "job cancelled by caller")
 
@@ -238,7 +240,6 @@ class JobContext:
         is returned (synthesized as if the response had arrived). Otherwise
         :class:`ARCPError` ``DEADLINE_EXCEEDED`` is raised.
         """
-
         prior_state = self.job.state
         self.job.state = "blocked"
         request_id = _new_msg_id()
@@ -307,7 +308,6 @@ class JobContext:
 
         Returns the chosen option id.
         """
-
         prior_state = self.job.state
         self.job.state = "blocked"
         request_id = _new_msg_id()
@@ -361,7 +361,6 @@ class JobContext:
         Returns the response envelope payload (``permission.grant`` or
         ``permission.deny``). Raises :class:`ARCPError` on deny.
         """
-
         prior_state = self.job.state
         self.job.state = "blocked"
         request_id = _new_msg_id()
@@ -405,6 +404,7 @@ class JobManager:
     _hard_kill_tasks: set[asyncio.Task[None]] = field(default_factory=set[asyncio.Task[None]])
 
     def get(self, job_id: str) -> JobRecord:
+        """Get."""
         record = self._jobs.get(job_id)
         if record is None:
             raise ARCPError(ErrorCode.NOT_FOUND, f"job {job_id!r} not found")
@@ -421,7 +421,6 @@ class JobManager:
         trace_id: str | None = None,
     ) -> JobRecord:
         """Accept a tool invocation as a job. Returns the JobRecord."""
-
         job = JobRecord(
             job_id=_new_job_id(),
             session_id=session_id,
@@ -582,7 +581,6 @@ class JobManager:
 
     async def cancel(self, job_id: str, *, deadline_ms: int = 5000) -> bool:
         """Request cooperative cancellation; returns ``True`` if accepted."""
-
         job = self.get(job_id)
         if job.state in ("completed", "failed", "cancelled"):
             raise ARCPError(ErrorCode.FAILED_PRECONDITION, f"job {job_id!r} is already terminal")
@@ -606,7 +604,6 @@ class JobManager:
 
     async def interrupt(self, job_id: str, prompt: str) -> None:
         """Request that ``job_id`` pauses and asks for human guidance (§10.5)."""
-
         job = self.get(job_id)
         if job.state not in ("running", "blocked", "queued"):
             raise ARCPError(ErrorCode.FAILED_PRECONDITION, f"job {job_id!r} not interruptible")
@@ -622,7 +619,6 @@ class JobManager:
         ``HEARTBEAT_LOST`` (when ``heartbeat_recovery == "fail"``) or
         ``blocked`` (when ``"block"``).
         """
-
         loop = asyncio.get_running_loop()
         misses = 0
         try:

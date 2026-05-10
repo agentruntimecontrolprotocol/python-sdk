@@ -29,12 +29,16 @@ class ArtifactPutPayload(BaseModel):
 
 
 class ArtifactFetchPayload(BaseModel):
+    """``artifact fetch`` payload."""
+
     model_config = ConfigDict(extra="forbid")
     artifact_id: str
     inline: bool = True
 
 
 class ArtifactReleasePayload(BaseModel):
+    """``artifact release`` payload."""
+
     model_config = ConfigDict(extra="forbid")
     artifact_id: str
 

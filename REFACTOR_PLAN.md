@@ -321,15 +321,28 @@ is no per-version CI matrix today.
 
 ## Phase log
 
-| Phase | Status | Tag | Notes |
-| --- | --- | --- | --- |
-| 0 | in progress | `refactor/phase-0-baseline` | Baseline + plan + tooling. |
-| 1 | pending | — | Format and trivial autofixes. |
-| 2 | pending | — | Packaging tweaks; delete `arcp-sdk/`; README. |
-| 3 | pending | — | Pyright strict on public API. |
-| 4 | pending | — | Modern syntax sweeps. |
-| 5 | pending | — | Pyright strict everywhere; idiomatic patterns. |
-| 6 | pending | — | Structured exceptions / `TRY` clean. |
-| 7 | pending | — | `asyncio.timeout`, `TaskGroup` audit. |
-| 8 | pending | — | Test modernization, coverage to ≥90%. |
-| 9 | pending | `refactor/phase-9-final` | Docstrings, README, CHANGELOG. |
+| Phase | Status | Tag | Commit | Notes |
+| --- | --- | --- | --- | --- |
+| 0 | done | `refactor/phase-0-baseline` | c48832d | Baseline + plan + tooling. |
+| 1 | done | — | 9a7e87c | `ruff format` (26 files); narrow autofix rule set was already clean. |
+| 2 | done | — | fa1c1db | Move dev deps to `[dependency-groups]`; delete stray `arcp-sdk/`; fix README quickstart. |
+| 3 | done | — | bb82090 | Drop the four `reportUnknown*` pyright relaxations; tighten one `Any` in `cli` to `ServerConnection`; add `@override` on Transport subclasses + `StaticTokenValidator.validate`. |
+| 4 | done | — | 5026503 | 16 `try/except/pass` → `contextlib.suppress`, one `SIM102/103` cleanup in subscription filter, one `RET504`. |
+| 5 | done | — | 4bfa618 | ARG cleanup: rename intentionally-unused params to `_`-prefixed names at production sites; per-file ignore for tests/examples. |
+| 6 | done | — | eb9ea94 | Narrow project-level ignore for `TRY003` (ARCPError already carries typed structure); per-line `TRY301` exception in cancel handler. |
+| 7 | done | — | 9f2433c | 3× `asyncio.wait_for` → `asyncio.timeout`; per-line `ASYNC109` noqa on the public `client.request` timeout parameter; `tests/**` per-file ignore for ASYNC109 (test-helper polling deadlines). |
+| 8 | done | — | (see commit log) | 35 new unit tests; coverage 86%→90.22%; `PT006` fix; `--cov=arcp --cov-fail-under=90` wired into pytest addopts. |
+| 9 | done | `refactor/phase-9-final` | (see commit log) | Pydocstyle (`D`) enabled under Google convention; 104 docstrings inserted; CHANGELOG and README polish; final gate clean. |
+
+### Final state vs. baseline
+
+| Metric | Baseline | Final |
+| --- | --- | --- |
+| Tests passing | 159 | 194 |
+| Coverage | 86% | 90.22% |
+| Ruff lint families enabled | 8 (`E,F,W,I,B,UP,N,RUF`) | 21 (full prompt-recommended set + `D`) |
+| Ruff issues | 0 (under narrow set) / 385 (under prompt set + `D`) | 0 (under prompt set + `D`) |
+| Pyright | 0 errors with 4 `reportUnknown*` relaxations | 0 errors fully strict |
+| Build | wheel + sdist clean | wheel + sdist clean |
+| Python floor | `>=3.12` | `>=3.13` |
+| Stale `arcp-sdk/` | present untracked | removed |

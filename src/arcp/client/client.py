@@ -58,13 +58,13 @@ class ARCPClient:
 
     @property
     def negotiated_capabilities(self) -> Capabilities:
+        """Negotiated capabilities."""
         if self._negotiated is None:
             raise RuntimeError("client has not completed handshake")
         return self._negotiated
 
     async def open(self) -> SessionAcceptedPayload:
         """Drive the §8.1 handshake. Returns the accepted-session payload."""
-
         if self.session_id is not None:
             raise RuntimeError("client is already open")
         open_envelope = Envelope(
@@ -124,7 +124,6 @@ class ARCPClient:
 
     async def send(self, envelope: Envelope) -> None:
         """Send an envelope on the bound transport."""
-
         if self.session_id is None:
             raise RuntimeError("client is not open")
         await self.transport.send(envelope.to_wire())
@@ -139,7 +138,6 @@ class ARCPClient:
 
         ``correlation_id`` matching is keyed on the outbound envelope's ``id``.
         """
-
         if self.session_id is None:
             raise RuntimeError("client is not open")
         loop = asyncio.get_running_loop()
@@ -154,7 +152,6 @@ class ARCPClient:
 
     async def events(self) -> AsyncIterator[Envelope]:
         """Yield non-correlated envelopes (events, streams, etc.)."""
-
         while True:
             envelope = await self._events.get()
             if envelope is None:
@@ -162,6 +159,7 @@ class ARCPClient:
             yield envelope
 
     async def close(self) -> None:
+        """Close."""
         if self._closed:
             return
         self._closed = True

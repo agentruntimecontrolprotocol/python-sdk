@@ -45,6 +45,8 @@ class EventEmitPayload(BaseModel):
 
 
 class LogPayload(BaseModel):
+    """``log`` payload."""
+
     model_config = ConfigDict(extra="forbid")
     level: LogLevel
     message: str
@@ -52,6 +54,8 @@ class LogPayload(BaseModel):
 
 
 class MetricPayload(BaseModel):
+    """``metric`` payload."""
+
     model_config = ConfigDict(extra="forbid")
     name: str
     value: float

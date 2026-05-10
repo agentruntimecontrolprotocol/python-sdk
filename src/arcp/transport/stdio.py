@@ -25,6 +25,7 @@ class StdioTransport(Transport):
 
     @override
     async def send(self, envelope: dict[str, Any]) -> None:
+        """Send."""
         if self._closed:
             raise TransportClosed("transport is closed")
         line = json.dumps(envelope, separators=(",", ":")) + "\n"
@@ -33,6 +34,7 @@ class StdioTransport(Transport):
 
     @override
     async def recv(self) -> dict[str, Any]:
+        """Recv."""
         line = await self._reader.readline()
         if not line:
             self._closed = True
@@ -42,6 +44,7 @@ class StdioTransport(Transport):
 
     @override
     async def close(self) -> None:
+        """Close."""
         if self._closed:
             return
         self._closed = True
@@ -51,6 +54,7 @@ class StdioTransport(Transport):
     @property
     @override
     def is_closed(self) -> bool:
+        """Is closed."""
         return self._closed
 
 

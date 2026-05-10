@@ -57,6 +57,8 @@ class Capabilities(BaseModel):
 
 
 class SessionOpenPayload(BaseModel):
+    """``session open`` payload."""
+
     model_config = ConfigDict(extra="forbid")
     auth: AuthBlock
     client: Identity
@@ -64,6 +66,8 @@ class SessionOpenPayload(BaseModel):
 
 
 class SessionChallengePayload(BaseModel):
+    """``session challenge`` payload."""
+
     model_config = ConfigDict(extra="forbid")
     nonce: str
     method: Literal["challenge_response"] = "challenge_response"
@@ -71,6 +75,8 @@ class SessionChallengePayload(BaseModel):
 
 
 class SessionAuthenticatePayload(BaseModel):
+    """``session authenticate`` payload."""
+
     model_config = ConfigDict(extra="forbid")
     auth: AuthBlock
     nonce_response: str | None = None
@@ -81,11 +87,15 @@ class RuntimeIdentity(Identity):
 
 
 class LeaseBlock(BaseModel):
+    """Lease block."""
+
     model_config = ConfigDict(extra="forbid")
     expires_at: str
 
 
 class SessionAcceptedPayload(BaseModel):
+    """``session accepted`` payload."""
+
     model_config = ConfigDict(extra="forbid")
     session_id: str
     runtime: RuntimeIdentity
@@ -102,6 +112,8 @@ class SessionUnauthenticatedPayload(BaseModel):
 
 
 class SessionRejectedPayload(BaseModel):
+    """``session rejected`` payload."""
+
     model_config = ConfigDict(extra="forbid")
     code: str
     message: str
@@ -109,12 +121,16 @@ class SessionRejectedPayload(BaseModel):
 
 
 class SessionRefreshPayload(BaseModel):
+    """``session refresh`` payload."""
+
     model_config = ConfigDict(extra="forbid")
     nonce: str
     expires_at: str
 
 
 class SessionEvictedPayload(BaseModel):
+    """``session evicted`` payload."""
+
     model_config = ConfigDict(extra="forbid")
     code: str
     reason: str
@@ -122,6 +138,8 @@ class SessionEvictedPayload(BaseModel):
 
 
 class SessionClosePayload(BaseModel):
+    """``session close`` payload."""
+
     model_config = ConfigDict(extra="forbid")
     reason: str | None = None
     detach_jobs: bool = False

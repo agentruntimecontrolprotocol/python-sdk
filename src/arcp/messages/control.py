@@ -8,11 +8,15 @@ from pydantic import BaseModel, ConfigDict, Field
 
 
 class PingPayload(BaseModel):
+    """``ping`` payload."""
+
     model_config = ConfigDict(extra="forbid")
     nonce: str | None = None
 
 
 class PongPayload(BaseModel):
+    """``pong`` payload."""
+
     model_config = ConfigDict(extra="forbid")
     nonce: str | None = None
 
@@ -48,12 +52,16 @@ class CancelPayload(BaseModel):
 
 
 class CancelAcceptedPayload(BaseModel):
+    """``cancel accepted`` payload."""
+
     model_config = ConfigDict(extra="forbid")
     target: CancelTarget
     target_id: str
 
 
 class CancelRefusedPayload(BaseModel):
+    """``cancel refused`` payload."""
+
     model_config = ConfigDict(extra="forbid")
     target: CancelTarget
     target_id: str
@@ -89,11 +97,15 @@ class BackpressurePayload(BaseModel):
 
 
 class CheckpointCreatePayload(BaseModel):
+    """``checkpoint create`` payload."""
+
     model_config = ConfigDict(extra="forbid")
     label: str | None = None
 
 
 class CheckpointRestorePayload(BaseModel):
+    """``checkpoint restore`` payload."""
+
     model_config = ConfigDict(extra="forbid")
     checkpoint_id: str
 

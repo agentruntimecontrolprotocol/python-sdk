@@ -97,8 +97,11 @@ Run them from the `examples/` directory: `cd examples && uv run python 06_relay_
 ```sh
 uv run pyright            # strict mode on src/, must be clean
 uv run ruff check         # lint, must be clean
-uv run pytest --cov=arcp --cov-fail-under=85
+uv run ruff format --check
+uv run pytest             # cov gate is wired into addopts (--cov-fail-under=90)
 ```
 
 Each phase commit (`phase 0` through `phase 7`) corresponds to a hard gate
-documented in `PLAN.md`.
+documented in `PLAN.md`. The subsequent `refactor phase 0` … `refactor phase 9`
+commits modernize the package per `REFACTOR_PLAN.md` without changing
+behavior.

@@ -61,7 +61,6 @@ CORE_STANDALONE: frozenset[str] = frozenset(
 
 def is_extension_name(message_type: str) -> bool:
     """Return ``True`` if ``message_type`` matches a recognized extension namespace."""
-
     if message_type.startswith("x-"):
         return False
     return bool(_ARCPX_PATTERN.match(message_type) or _REVERSE_DNS_PATTERN.match(message_type))
@@ -74,7 +73,6 @@ def validate_extension_name(message_type: str) -> None:
     conform to §21.1 (``arcpx.*.v<n>`` or reverse-DNS ``*.v<n>``), or when a
     bare ``x-`` prefix is used in a context where it is forbidden.
     """
-
     if message_type.startswith("x-"):
         raise ARCPError(
             ErrorCode.INVALID_ARGUMENT,
@@ -89,7 +87,6 @@ def validate_extension_name(message_type: str) -> None:
 
 def is_core_type(message_type: str) -> bool:
     """Return ``True`` if ``message_type`` belongs to a core RFC §6.2 prefix."""
-
     if message_type in CORE_STANDALONE:
         return True
     return any(message_type.startswith(prefix) for prefix in CORE_PREFIXES)
@@ -103,7 +100,6 @@ class ExtensionRegistry:
 
     def advertise(self, name: str) -> None:
         """Register ``name`` as advertised. Validates the namespace shape."""
-
         validate_extension_name(name)
         self.advertised.add(name)
 
@@ -114,7 +110,6 @@ class ExtensionRegistry:
         ``arcpx.acme.foo.``; the version suffix on the namespace acts as a
         bounding tag rather than a strict equality check.
         """
-
         for ns in self.advertised:
             if message_type == ns or message_type.startswith(ns.rsplit(".v", 1)[0] + "."):
                 return True
@@ -136,7 +131,6 @@ def classify_unknown(envelope: Envelope, registry: ExtensionRegistry) -> Unknown
     at debug level); returns ``("nack", reason)`` when the receiver should
     respond with ``nack`` and ``code: UNIMPLEMENTED``.
     """
-
     msg_type = envelope.type
     if is_core_type(msg_type):
         return UnknownMessageDecision(action="nack", reason=f"unknown core type {msg_type!r}")

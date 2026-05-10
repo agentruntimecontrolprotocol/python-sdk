@@ -24,6 +24,7 @@ class JWTValidator:
     algorithms: tuple[str, ...] = ("HS256",)
 
     def validate(self, token: str) -> str:
+        """Validate."""
         try:
             decoded: dict[str, Any] = jwt.decode(
                 token,

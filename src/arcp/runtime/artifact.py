@@ -20,6 +20,8 @@ def _now_iso() -> str:
 
 @dataclass
 class ArtifactRecord:
+    """Artifact record."""
+
     artifact_id: str
     session_id: str
     media_type: str
@@ -51,6 +53,7 @@ class ArtifactStore:
         sha256: str | None = None,
         expires_at: str | None = None,
     ) -> ArtifactRecord:
+        """Put."""
         try:
             blob = base64.b64decode(data_b64, validate=True)
         except (ValueError, binascii.Error) as exc:
@@ -84,6 +87,7 @@ class ArtifactStore:
         )
 
     async def fetch(self, *, session_id: str, artifact_id: str) -> dict[str, Any]:
+        """Fetch."""
         conn = self._event_log.connection
         async with conn.execute(
             """
@@ -111,6 +115,7 @@ class ArtifactStore:
         }
 
     async def release(self, *, session_id: str, artifact_id: str) -> None:
+        """Release."""
         conn = self._event_log.connection
         cursor = await conn.execute(
             "UPDATE artifacts SET released = 1 WHERE artifact_id = ? AND session_id = ?",
@@ -124,7 +129,6 @@ class ArtifactStore:
 
     async def sweep(self) -> int:
         """Delete expired artifacts. Returns the count removed."""
-
         conn = self._event_log.connection
         cursor = await conn.execute(
             "DELETE FROM artifacts WHERE expires_at IS NOT NULL AND expires_at < ?",

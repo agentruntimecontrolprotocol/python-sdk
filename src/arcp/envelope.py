@@ -18,7 +18,6 @@ Priority = Literal["low", "normal", "high", "critical"]
 
 def _utcnow_iso() -> str:
     """Return current UTC time formatted per RFC 3339 (``Z`` suffix)."""
-
     return datetime.now(tz=UTC).strftime("%Y-%m-%dT%H:%M:%S.%f")[:-3] + "Z"
 
 
@@ -71,13 +70,11 @@ class Envelope(BaseModel):
 
     def to_wire(self) -> dict[str, Any]:
         """Serialize to a JSON-compatible dict, omitting ``None`` optional fields."""
-
         return self.model_dump(exclude_none=True, by_alias=False)
 
     @classmethod
     def from_wire(cls, raw: dict[str, Any]) -> Envelope:
         """Parse a wire-format dict into an :class:`Envelope`."""
-
         return cls.model_validate(raw)
 
 

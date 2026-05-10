@@ -41,11 +41,15 @@ class StreamChunkPayload(BaseModel):
 
 
 class StreamClosePayload(BaseModel):
+    """``stream close`` payload."""
+
     model_config = ConfigDict(extra="forbid")
     reason: str | None = None
 
 
 class StreamErrorPayload(BaseModel):
+    """``stream error`` payload."""
+
     model_config = ConfigDict(extra="forbid")
     code: str
     message: str

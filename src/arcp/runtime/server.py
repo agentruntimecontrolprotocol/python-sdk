@@ -74,6 +74,8 @@ DispatchHandler = Callable[["ARCPRuntime", SessionState, Envelope], Awaitable[No
 
 @dataclass
 class RuntimeConfig:
+    """Runtime config."""
+
     runtime_identity: RuntimeIdentity
     advertised_capabilities: Capabilities
     bearer_validator: Any | None = None
@@ -111,16 +113,17 @@ class ARCPRuntime:
 
     def register_tool(self, name: str, impl: ToolImpl) -> None:
         """Register an async tool implementation by name."""
-
         self._tools[name] = impl
 
     def get_job_manager(self, session_id: str) -> JobManager:
+        """Get job manager."""
         manager = self._job_managers.get(session_id)
         if manager is None:
             raise RuntimeError(f"no job manager bound for session {session_id!r}")
         return manager
 
     async def start(self) -> None:
+        """Start."""
         if self._started:
             return
         self._event_log = EventLog(self.config.event_log_path)
@@ -144,30 +147,33 @@ class ARCPRuntime:
 
     @property
     def subscriptions(self) -> SubscriptionManager:
+        """Subscriptions."""
         if self._subscription_manager is None:
             raise RuntimeError("ARCPRuntime not started")
         return self._subscription_manager
 
     @property
     def artifacts(self) -> ArtifactStore:
+        """Artifacts."""
         if self._artifact_store is None:
             raise RuntimeError("ARCPRuntime not started")
         return self._artifact_store
 
     async def close(self) -> None:
+        """Close."""
         if self._event_log is not None:
             await self._event_log.close()
         self._started = False
 
     @property
     def event_log(self) -> EventLog:
+        """Event log."""
         if self._event_log is None:
             raise RuntimeError("ARCPRuntime not started")
         return self._event_log
 
     def register_handler(self, message_type: str, handler: DispatchHandler) -> None:
         """Register a dispatch handler for a message type. Idempotent overwrite."""
-
         self._dispatch[message_type] = handler
 
     def _register_default_handlers(self) -> None:
@@ -522,7 +528,6 @@ class ARCPRuntime:
         create one transport per session; for WebSocket this is one socket
         per accepted connection.
         """
-
         if not self._started:
             await self.start()
         assert self._handshake is not None
@@ -660,7 +665,6 @@ class ARCPRuntime:
         Every emitted envelope is appended to the event log and broadcast to
         the SubscriptionManager so observers receive it (RFC §13).
         """
-
         await self.event_log.append(envelope)
         transport = self._transports.get(state.session_id)
         if transport is not None:
@@ -703,6 +707,8 @@ def _new_msg_id() -> str:
 
 # Lightweight contextlib.suppress avoiding import cycle clutter.
 class contextlib_suppress:  # noqa: N801 - module-private helper
+    """Contextlib suppress."""
+
     def __init__(self, *exc_types: type[BaseException]) -> None:
         self._types = exc_types
 

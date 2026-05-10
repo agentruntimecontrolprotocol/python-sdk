@@ -19,6 +19,8 @@ def _format_iso(when: datetime) -> str:
 
 @dataclass
 class Lease:
+    """Lease."""
+
     lease_id: str
     permission: str
     resource: str | None
@@ -29,10 +31,12 @@ class Lease:
 
     @property
     def is_expired(self) -> bool:
+        """Is expired."""
         return _now() >= self.expires_at
 
     @property
     def expires_at_iso(self) -> str:
+        """Expires at iso."""
         return _format_iso(self.expires_at)
 
 
@@ -50,6 +54,7 @@ class LeaseManager:
         operation: str | None,
         seconds: int,
     ) -> Lease:
+        """Grant."""
         lease = Lease(
             lease_id=f"lease_{uuid.uuid4().hex[:12]}",
             permission=permission,
@@ -61,12 +66,14 @@ class LeaseManager:
         return lease
 
     def get(self, lease_id: str) -> Lease:
+        """Get."""
         lease = self._leases.get(lease_id)
         if lease is None:
             raise ARCPError(ErrorCode.NOT_FOUND, f"lease {lease_id!r} not found")
         return lease
 
     def extend(self, lease_id: str, seconds: int) -> Lease:
+        """Extend."""
         lease = self.get(lease_id)
         if lease.revoked:
             raise ARCPError(ErrorCode.LEASE_REVOKED, f"lease {lease_id!r} is revoked")
@@ -76,12 +83,14 @@ class LeaseManager:
         return lease
 
     def revoke(self, lease_id: str, reason: str | None = None) -> Lease:
+        """Revoke."""
         lease = self.get(lease_id)
         lease.revoked = True
         lease.revoked_reason = reason
         return lease
 
     def assert_valid(self, lease_id: str) -> Lease:
+        """Assert valid."""
         lease = self.get(lease_id)
         if lease.revoked:
             raise ARCPError(ErrorCode.LEASE_REVOKED, f"lease {lease_id!r} is revoked")

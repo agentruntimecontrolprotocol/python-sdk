@@ -52,7 +52,6 @@ target-version = "py313"
 src = ["src", "tests"]
 
 [tool.ruff.lint]
-# Phase 9 adds "D" (pydocstyle).
 select = [
     "E", "W",
     "F",
@@ -73,6 +72,7 @@ select = [
     "SLF",
     "TID",
     "PERF",
+    "D",
 ]
 ignore = [
     "E501",  # line-too-long: handled by ruff format; surfaced cases are pydantic Field descriptions.
@@ -82,6 +82,13 @@ ignore = [
     # would add code without adding type structure. Same applies to
     # TransportClosed and the two pydantic field-validator ValueErrors.
     "TRY003",
+    # Google docstring convention: docs for __init__ live in the class docstring;
+    # magic methods don't need their own docstring; D203/D213 conflict with
+    # D211/D212 respectively.
+    "D107",
+    "D105",
+    "D203",
+    "D213",
 ]
 
 [tool.ruff.lint.per-file-ignores]
@@ -89,8 +96,10 @@ ignore = [
 # have protocol-mandated signatures; unused-arg lints are noise here.
 # ASYNC109 in tests fires on test-helper polling deadlines that use a
 # `timeout=` parameter as a wall-clock budget rather than asyncio.timeout().
-"tests/**" = ["B011", "ARG001", "ARG002", "ASYNC109"]
-"examples/**" = ["ARG001", "ARG002"]
+# Tests and examples are self-documenting via descriptive function names; D
+# (pydocstyle) noise is not paying its way there.
+"tests/**" = ["B011", "ARG001", "ARG002", "ASYNC109", "D"]
+"examples/**" = ["ARG001", "ARG002", "D"]
 
 [tool.ruff.lint.pydocstyle]
 convention = "google"

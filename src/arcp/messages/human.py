@@ -19,6 +19,8 @@ class HumanInputRequestPayload(BaseModel):
 
 
 class HumanInputResponsePayload(BaseModel):
+    """``human input response`` payload."""
+
     model_config = ConfigDict(extra="forbid")
     value: Any
     responded_by: str | None = None
@@ -26,6 +28,8 @@ class HumanInputResponsePayload(BaseModel):
 
 
 class HumanChoiceOption(BaseModel):
+    """Human choice option."""
+
     model_config = ConfigDict(extra="forbid")
     id: str
     label: str
@@ -43,6 +47,8 @@ class HumanChoiceRequestPayload(BaseModel):
 
 
 class HumanChoiceResponsePayload(BaseModel):
+    """``human choice response`` payload."""
+
     model_config = ConfigDict(extra="forbid")
     choice_id: str
     responded_by: str | None = None

@@ -53,7 +53,6 @@ def validate_payload(message_type: str, payload: dict[str, Any]) -> BaseModel | 
     for ``message_type`` (the dispatcher then falls back to extension/unknown
     handling per RFC §21.3).
     """
-
     model = PAYLOAD_MODELS.get(message_type)
     if model is None:
         return None

@@ -27,6 +27,8 @@ class ToolInvokePayload(BaseModel):
 
 
 class ToolResultPayload(BaseModel):
+    """``tool result`` payload."""
+
     model_config = ConfigDict(extra="forbid")
     value: Any | None = None
     result_ref: dict[str, Any] | None = None
@@ -45,6 +47,8 @@ class ToolErrorPayload(BaseModel):
 
 
 class JobAcceptedPayload(BaseModel):
+    """``job accepted`` payload."""
+
     model_config = ConfigDict(extra="forbid")
     job_id: str
     state: JobState = "accepted"
@@ -52,11 +56,15 @@ class JobAcceptedPayload(BaseModel):
 
 
 class JobStartedPayload(BaseModel):
+    """``job started`` payload."""
+
     model_config = ConfigDict(extra="forbid")
     job_id: str
 
 
 class JobProgressPayload(BaseModel):
+    """``job progress`` payload."""
+
     model_config = ConfigDict(extra="forbid")
     percent: float | None = Field(default=None, ge=0, le=100)
     message: str | None = None
@@ -72,18 +80,24 @@ class JobHeartbeatPayload(BaseModel):
 
 
 class JobCheckpointPayload(BaseModel):
+    """``job checkpoint`` payload."""
+
     model_config = ConfigDict(extra="forbid")
     checkpoint_id: str
     label: str | None = None
 
 
 class JobCompletedPayload(BaseModel):
+    """``job completed`` payload."""
+
     model_config = ConfigDict(extra="forbid")
     result: Any | None = None
     result_ref: dict[str, Any] | None = None
 
 
 class JobFailedPayload(BaseModel):
+    """``job failed`` payload."""
+
     model_config = ConfigDict(extra="forbid")
     code: str
     message: str
@@ -92,12 +106,16 @@ class JobFailedPayload(BaseModel):
 
 
 class JobCancelledPayload(BaseModel):
+    """``job cancelled`` payload."""
+
     model_config = ConfigDict(extra="forbid")
     reason: str | None = None
     code: str = "CANCELLED"
 
 
 class JobScheduleWhen(BaseModel):
+    """Job schedule when."""
+
     model_config = ConfigDict(extra="forbid")
     at: str | None = None
     every: str | None = None
@@ -105,23 +123,31 @@ class JobScheduleWhen(BaseModel):
 
 
 class JobSchedulePayload(BaseModel):
+    """``job schedule`` payload."""
+
     model_config = ConfigDict(extra="forbid")
     job: dict[str, Any]
     when: JobScheduleWhen
 
 
 class WorkflowStartPayload(BaseModel):
+    """``workflow start`` payload."""
+
     model_config = ConfigDict(extra="forbid")
     workflow: str
     arguments: dict[str, Any] = Field(default_factory=dict)
 
 
 class WorkflowCompletePayload(BaseModel):
+    """``workflow complete`` payload."""
+
     model_config = ConfigDict(extra="forbid")
     result: Any | None = None
 
 
 class AgentDelegatePayload(BaseModel):
+    """``agent delegate`` payload."""
+
     model_config = ConfigDict(extra="forbid")
     target: str
     task: str
@@ -129,6 +155,8 @@ class AgentDelegatePayload(BaseModel):
 
 
 class AgentHandoffPayload(BaseModel):
+    """``agent handoff`` payload."""
+
     model_config = ConfigDict(extra="forbid")
     target_runtime: dict[str, Any]
     job_id: str | None = None

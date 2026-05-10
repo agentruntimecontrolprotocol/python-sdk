@@ -19,7 +19,6 @@ class PendingRequestRegistry:
 
     def register(self, correlation_id: str) -> asyncio.Future[dict[str, Any]]:
         """Register and return a pending future keyed by ``correlation_id``."""
-
         if correlation_id in self._pending:
             raise ValueError(f"duplicate pending correlation_id: {correlation_id}")
         loop = asyncio.get_running_loop()
@@ -29,7 +28,6 @@ class PendingRequestRegistry:
 
     def resolve(self, correlation_id: str, response: dict[str, Any]) -> bool:
         """Resolve the pending future. Returns ``False`` if no entry."""
-
         future = self._pending.pop(correlation_id, None)
         if future is None or future.done():
             return False
@@ -38,7 +36,6 @@ class PendingRequestRegistry:
 
     def reject(self, correlation_id: str, error: BaseException) -> bool:
         """Fail the pending future. Returns ``False`` if no entry."""
-
         future = self._pending.pop(correlation_id, None)
         if future is None or future.done():
             return False
@@ -46,6 +43,7 @@ class PendingRequestRegistry:
         return True
 
     def cancel(self, correlation_id: str) -> bool:
+        """Cancel."""
         future = self._pending.pop(correlation_id, None)
         if future is None or future.done():
             return False
@@ -53,6 +51,7 @@ class PendingRequestRegistry:
         return True
 
     def cancel_all(self) -> None:
+        """Cancel all."""
         for cid in list(self._pending):
             self.cancel(cid)
 

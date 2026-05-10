@@ -49,6 +49,7 @@ class StreamManager:
         content_type: str | None = None,
         stream_id: str | None = None,
     ) -> StreamState:
+        """Open."""
         sid = stream_id or f"str_{uuid.uuid4().hex[:12]}"
         if sid in self._streams:
             raise ARCPError(ErrorCode.ALREADY_EXISTS, f"stream {sid!r} already open")
@@ -63,23 +64,25 @@ class StreamManager:
         return state
 
     def get(self, stream_id: str) -> StreamState:
+        """Get."""
         state = self._streams.get(stream_id)
         if state is None:
             raise ARCPError(ErrorCode.NOT_FOUND, f"stream {stream_id!r} not open")
         return state
 
     def close(self, stream_id: str) -> StreamState:
+        """Close."""
         state = self.get(stream_id)
         state.closed = True
         return state
 
     def apply_backpressure(self, stream_id: str, desired_rate: int | None) -> None:
+        """Apply backpressure."""
         state = self.get(stream_id)
         state.desired_rate_per_second = desired_rate
 
     async def throttle(self, stream_id: str) -> None:
         """Sleep as needed to honor a backpressure-set ``desired_rate_per_second``."""
-
         state = self.get(stream_id)
         if state.desired_rate_per_second is None or state.desired_rate_per_second <= 0:
             return
@@ -92,6 +95,7 @@ class StreamManager:
         state.last_emit_ts = loop.time()
 
     def next_sequence(self, stream_id: str) -> int:
+        """Next sequence."""
         state = self.get(stream_id)
         seq = state.sequence
         state.sequence += 1

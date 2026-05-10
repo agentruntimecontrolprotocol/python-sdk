@@ -27,7 +27,6 @@ PRIORITY_RANK: dict[str, int] = {"low": 0, "normal": 1, "high": 2, "critical": 3
 
 def _passes_filter(envelope: Envelope, filt: SubscribeFilter) -> bool:
     """Apply §13.2 filter semantics: AND across fields, OR within arrays."""
-
     if filt.session_id and envelope.session_id not in filt.session_id:
         return False
     if filt.trace_id and (envelope.trace_id is None or envelope.trace_id not in filt.trace_id):
@@ -46,6 +45,8 @@ def _passes_filter(envelope: Envelope, filt: SubscribeFilter) -> bool:
 
 @dataclass
 class Subscription:
+    """Subscription."""
+
     subscription_id: str
     subscriber_session_id: str
     filter: SubscribeFilter
@@ -71,9 +72,11 @@ class SubscriptionManager:
     _backfill_tasks: set[asyncio.Task[None]] = field(default_factory=set[asyncio.Task[None]])
 
     def all(self) -> list[Subscription]:
+        """All."""
         return list(self._subscriptions.values())
 
     def get(self, subscription_id: str) -> Subscription:
+        """Get."""
         sub = self._subscriptions.get(subscription_id)
         if sub is None:
             raise ARCPError(ErrorCode.NOT_FOUND, f"subscription {subscription_id!r} not found")
@@ -87,7 +90,6 @@ class SubscriptionManager:
         is_authorized: Callable[[SubscribeFilter], None],
     ) -> Subscription:
         """Open a new subscription. ``is_authorized(filter)`` may raise to reject."""
-
         is_authorized(payload.filter)
         sub = Subscription(
             subscription_id=f"sub_{uuid.uuid4().hex[:12]}",
@@ -124,7 +126,6 @@ class SubscriptionManager:
 
     async def broadcast(self, envelope: Envelope) -> None:
         """Fan ``envelope`` out to every matching subscription's live tail."""
-
         for sub in self._subscriptions.values():
             if sub.closed or not sub.backfill_done:
                 continue
@@ -133,6 +134,7 @@ class SubscriptionManager:
             await sub.queue.put(envelope)
 
     async def close(self, subscription_id: str) -> Subscription:
+        """Close."""
         sub = self.get(subscription_id)
         sub.closed = True
         await sub.queue.put(None)

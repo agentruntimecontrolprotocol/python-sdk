@@ -97,7 +97,6 @@ def negotiate_capabilities(
     indicates a required-but-unsupported capability and the runtime should
     emit ``session.rejected`` with ``code: UNIMPLEMENTED`` per §7.
     """
-
     boolean_caps = (
         "streaming",
         "durable_jobs",
@@ -172,7 +171,6 @@ class HandshakeDriver:
 
     def handle_open(self, envelope: Envelope) -> HandshakeResult:
         """Process a ``session.open`` envelope."""
-
         try:
             payload = SessionOpenPayload.model_validate(envelope.payload)
         except Exception as exc:  # pydantic ValidationError
@@ -239,7 +237,6 @@ class HandshakeDriver:
         Reserved for runtimes that always challenge; the default handler
         does not call this. Kept for completeness.
         """
-
         nonce = secrets.token_urlsafe(16)
         self._challenges[opening.id] = {
             "nonce": nonce,
@@ -324,7 +321,6 @@ def consume_authenticate(state: SessionState, envelope: Envelope) -> tuple[Envel
     re-authentication (``session.refresh``) since the initial open path
     accepts directly when credentials suffice.
     """
-
     try:
         payload = SessionAuthenticatePayload.model_validate(envelope.payload)
     except Exception as exc:

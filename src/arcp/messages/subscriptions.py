@@ -22,17 +22,23 @@ class SubscribeFilter(BaseModel):
 
 
 class SubscribeSince(BaseModel):
+    """Subscribe since."""
+
     model_config = ConfigDict(extra="forbid")
     after_message_id: str | None = None
 
 
 class SubscribePayload(BaseModel):
+    """``subscribe`` payload."""
+
     model_config = ConfigDict(extra="forbid")
     filter: SubscribeFilter = Field(default_factory=SubscribeFilter)
     since: SubscribeSince | None = None
 
 
 class SubscribeAcceptedPayload(BaseModel):
+    """``subscribe accepted`` payload."""
+
     model_config = ConfigDict(extra="forbid")
     subscription_id: str
 
@@ -45,11 +51,15 @@ class SubscribeEventPayload(BaseModel):
 
 
 class UnsubscribePayload(BaseModel):
+    """``unsubscribe`` payload."""
+
     model_config = ConfigDict(extra="forbid")
     subscription_id: str
 
 
 class SubscribeClosedPayload(BaseModel):
+    """``subscribe closed`` payload."""
+
     model_config = ConfigDict(extra="forbid")
     subscription_id: str
     code: str

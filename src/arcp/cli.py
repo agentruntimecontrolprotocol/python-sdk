@@ -71,7 +71,6 @@ def _default_caps() -> Capabilities:
 @click.option("--token", multiple=True, help="bearer token in the form 'token=principal'.")
 def serve(transport: str, bind: str, token: tuple[str, ...]) -> None:
     """Start an ARCP runtime listening on ``--bind``."""
-
     host, _, port_s = bind.rpartition(":")
     port = int(port_s)
     if not host:
@@ -119,7 +118,6 @@ def serve(transport: str, bind: str, token: tuple[str, ...]) -> None:
 @click.option("--token", default=None)
 def send(uri: str, msg_type: str, payload: str, token: str | None) -> None:
     """Send a single envelope of ``--type`` and print the first correlated reply."""
-
     parsed_payload: dict[str, Any] = json.loads(payload)
 
     async def _run() -> None:

@@ -36,7 +36,6 @@ class ClientHandlers:
 
     async def pump(self) -> None:
         """Continuously consume events and route runtime prompts to resolvers."""
-
         async for env in self.client.events():
             await self._dispatch(env)
 
