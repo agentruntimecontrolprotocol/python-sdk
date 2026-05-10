@@ -24,7 +24,12 @@ from arcp.messages.execution import (
     ToolErrorPayload,
     ToolResultPayload,
 )
-from arcp.messages.human import HumanInputRequestPayload
+from arcp.messages.human import (
+    HumanChoiceOption,
+    HumanChoiceRequestPayload,
+    HumanInputRequestPayload,
+)
+from arcp.messages.permissions import PermissionRequestPayload
 from arcp.messages.streaming import (
     StreamChunkPayload,
     StreamClosePayload,
@@ -32,6 +37,7 @@ from arcp.messages.streaming import (
     StreamKind,
     StreamOpenPayload,
 )
+from arcp.runtime.pending import PendingRequestRegistry
 from arcp.runtime.stream import StreamManager
 
 logger = structlog.get_logger("arcp.job")
@@ -45,6 +51,26 @@ def _new_msg_id() -> str:
 
 def _new_job_id() -> str:
     return f"job_{uuid.uuid4().hex[:12]}"
+
+
+def _seconds_until(iso_timestamp: str) -> float:
+    """Return seconds from now until ``iso_timestamp`` (RFC 3339, UTC)."""
+
+    from datetime import UTC, datetime
+
+    normalized = (
+        iso_timestamp.replace("Z", "+00:00") if iso_timestamp.endswith("Z") else iso_timestamp
+    )
+    target = datetime.fromisoformat(normalized)
+    if target.tzinfo is None:
+        target = target.replace(tzinfo=UTC)
+    return (target - datetime.now(tz=UTC)).total_seconds()
+
+
+def _ensure_dict(value: Any) -> dict[str, Any]:
+    if not isinstance(value, dict):
+        return {"value": value}
+    return {str(k): v for k, v in value.items()}  # pyright: ignore[reportUnknownVariableType, reportUnknownArgumentType]
 
 
 
@@ -77,6 +103,7 @@ class JobContext:
     job: JobRecord
     sink: EnvelopeSink
     streams: StreamManager
+    pending: PendingRequestRegistry
     heartbeat_interval_seconds: float = 30.0
 
     async def heartbeat(self, *, deadline_ms: int = 60_000) -> None:
@@ -209,12 +236,13 @@ class JobContext:
         response_schema: dict[str, Any] | None = None,
         default: Any | None = None,
         expires_at: str,
-    ) -> Envelope:
-        """Block the job and emit a ``human.input.request`` (§12.1, §10.5).
+    ) -> dict[str, Any]:
+        """Block the job, emit ``human.input.request``, await response.
 
-        The caller awaits the matching response, which the runtime delivers via
-        the session's pending registry. The job's state transitions to
-        ``blocked`` for the duration of the await.
+        Returns the response payload's ``value`` field. If ``expires_at`` is
+        reached before a response arrives and ``default`` is set, the default
+        is returned (synthesized as if the response had arrived). Otherwise
+        :class:`ARCPError` ``DEADLINE_EXCEEDED`` is raised.
         """
 
         prior_state = self.job.state
@@ -233,12 +261,144 @@ class JobContext:
                 expires_at=expires_at,
             ).model_dump(exclude_none=True),
         )
-        # The caller obtains the response via the pending registry — wired by
-        # the runtime in Phase 4. For now we return the request envelope so
-        # callers can register a future against ``request_id`` via the runtime.
+        future = self.pending.register(request_id)
         await self.sink(envelope)
+        timeout = max(0.0, _seconds_until(expires_at))
+        try:
+            response = await asyncio.wait_for(future, timeout=timeout)
+        except TimeoutError as exc:
+            self.pending.cancel(request_id)
+            if default is not None:
+                cancelled = Envelope(
+                    id=_new_msg_id(),
+                    type="human.input.cancelled",
+                    session_id=self.job.session_id,
+                    job_id=self.job.job_id,
+                    correlation_id=request_id,
+                    payload={
+                        "code": str(ErrorCode.DEADLINE_EXCEEDED),
+                        "reason": "deadline elapsed; default applied",
+                    },
+                )
+                await self.sink(cancelled)
+                self.job.state = prior_state
+                return _ensure_dict(default)
+            cancelled = Envelope(
+                id=_new_msg_id(),
+                type="human.input.cancelled",
+                session_id=self.job.session_id,
+                job_id=self.job.job_id,
+                correlation_id=request_id,
+                payload={
+                    "code": str(ErrorCode.DEADLINE_EXCEEDED),
+                    "reason": "deadline elapsed",
+                },
+            )
+            await self.sink(cancelled)
+            self.job.state = prior_state
+            raise ARCPError(
+                ErrorCode.DEADLINE_EXCEEDED, "human input request expired"
+            ) from exc
         self.job.state = prior_state
-        return envelope
+        return _ensure_dict(response.get("value"))
+
+    async def request_human_choice(
+        self,
+        *,
+        prompt: str,
+        options: list[HumanChoiceOption],
+        expires_at: str,
+        default_choice_id: str | None = None,
+    ) -> str:
+        """Block the job, emit ``human.choice.request``, await response.
+
+        Returns the chosen option id.
+        """
+
+        prior_state = self.job.state
+        self.job.state = "blocked"
+        request_id = _new_msg_id()
+        envelope = Envelope(
+            id=request_id,
+            type="human.choice.request",
+            session_id=self.job.session_id,
+            job_id=self.job.job_id,
+            trace_id=self.job.trace_id,
+            payload=HumanChoiceRequestPayload(
+                prompt=prompt,
+                options=options,
+                expires_at=expires_at,
+                default_choice_id=default_choice_id,
+            ).model_dump(exclude_none=True),
+        )
+        future = self.pending.register(request_id)
+        await self.sink(envelope)
+        timeout = max(0.0, _seconds_until(expires_at))
+        try:
+            response = await asyncio.wait_for(future, timeout=timeout)
+        except TimeoutError as exc:
+            self.pending.cancel(request_id)
+            self.job.state = prior_state
+            if default_choice_id is not None:
+                return default_choice_id
+            raise ARCPError(
+                ErrorCode.DEADLINE_EXCEEDED, "human choice request expired"
+            ) from exc
+        self.job.state = prior_state
+        choice_id = response.get("choice_id")
+        if not isinstance(choice_id, str):
+            raise ARCPError(
+                ErrorCode.INVALID_ARGUMENT, "choice response missing choice_id"
+            )
+        if not any(opt.id == choice_id for opt in options):
+            raise ARCPError(
+                ErrorCode.INVALID_ARGUMENT,
+                f"choice_id {choice_id!r} not in offered options",
+            )
+        return choice_id
+
+    async def request_permission(
+        self,
+        *,
+        permission: str,
+        resource: str | None = None,
+        operation: str | None = None,
+        reason: str | None = None,
+        requested_lease_seconds: int = 300,
+    ) -> dict[str, Any]:
+        """Block the job, emit ``permission.request``, await grant or deny.
+
+        Returns the response envelope payload (``permission.grant`` or
+        ``permission.deny``). Raises :class:`ARCPError` on deny.
+        """
+
+        prior_state = self.job.state
+        self.job.state = "blocked"
+        request_id = _new_msg_id()
+        envelope = Envelope(
+            id=request_id,
+            type="permission.request",
+            session_id=self.job.session_id,
+            job_id=self.job.job_id,
+            trace_id=self.job.trace_id,
+            payload=PermissionRequestPayload(
+                permission=permission,
+                resource=resource,
+                operation=operation,
+                reason=reason,
+                requested_lease_seconds=requested_lease_seconds,
+            ).model_dump(exclude_none=True),
+        )
+        future = self.pending.register(request_id)
+        await self.sink(envelope)
+        response = await future
+        self.job.state = prior_state
+        if response.get("__type__") == "permission.deny":
+            raise ARCPError(
+                ErrorCode.PERMISSION_DENIED,
+                str(response.get("reason") or "permission denied"),
+            )
+        return response
 
 
 @dataclass
@@ -247,6 +407,7 @@ class JobManager:
 
     sink: EnvelopeSink
     streams: StreamManager = field(default_factory=StreamManager)
+    pending: PendingRequestRegistry = field(default_factory=PendingRequestRegistry)
     heartbeat_interval_seconds: float = 30.0
     heartbeat_recovery: str = "fail"
     miss_threshold: int = 2
@@ -299,6 +460,7 @@ class JobManager:
             job=job,
             sink=self.sink,
             streams=self.streams,
+            pending=self.pending,
             heartbeat_interval_seconds=self.heartbeat_interval_seconds,
         )
         watchdog = asyncio.create_task(self._watchdog(job))

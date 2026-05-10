@@ -30,12 +30,21 @@ from arcp.messages.control import (
     CancelRefusedPayload,
 )
 from arcp.messages.execution import ToolInvokePayload
+from arcp.messages.permissions import (
+    LeaseExtendedPayload,
+    LeaseGrantedPayload,
+    LeaseRefreshPayload,
+    LeaseRevokedPayload,
+    PermissionDenyPayload,
+    PermissionGrantPayload,
+)
 from arcp.messages.session import (
     Capabilities,
     RuntimeIdentity,
     SessionUnauthenticatedPayload,
 )
 from arcp.runtime.job import JobManager
+from arcp.runtime.lease import LeaseManager
 from arcp.runtime.session import HandshakeDriver, SessionPhase, SessionState
 from arcp.runtime.stream import StreamManager
 from arcp.store.eventlog import EventLog
@@ -78,6 +87,9 @@ class ARCPRuntime:
     _job_managers: dict[str, JobManager] = field(default_factory=dict[str, JobManager])
     _stream_managers: dict[str, StreamManager] = field(
         default_factory=dict[str, StreamManager]
+    )
+    _lease_managers: dict[str, LeaseManager] = field(
+        default_factory=dict[str, LeaseManager]
     )
     _started: bool = False
 
@@ -201,10 +213,118 @@ class ARCPRuntime:
                 )
                 await rt._send(state, refused)
 
+        async def _handle_human_input_response(
+            rt: ARCPRuntime, state: SessionState, env: Envelope
+        ) -> None:
+            cid = env.correlation_id
+            if cid is None:
+                raise ARCPError(
+                    ErrorCode.INVALID_ARGUMENT, "human.input.response missing correlation_id"
+                )
+            state.pending.resolve(cid, dict(env.payload))
+
+        async def _handle_human_choice_response(
+            rt: ARCPRuntime, state: SessionState, env: Envelope
+        ) -> None:
+            cid = env.correlation_id
+            if cid is None:
+                raise ARCPError(
+                    ErrorCode.INVALID_ARGUMENT, "human.choice.response missing correlation_id"
+                )
+            state.pending.resolve(cid, dict(env.payload))
+
+        async def _handle_permission_grant(
+            rt: ARCPRuntime, state: SessionState, env: Envelope
+        ) -> None:
+            cid = env.correlation_id
+            if cid is None:
+                raise ARCPError(
+                    ErrorCode.INVALID_ARGUMENT, "permission.grant missing correlation_id"
+                )
+            payload = PermissionGrantPayload.model_validate(env.payload)
+            leases = rt._lease_managers[state.session_id]
+            lease = leases.grant(
+                permission=payload.permission,
+                resource=payload.resource,
+                operation=payload.operation,
+                seconds=payload.lease_seconds,
+            )
+            granted_envelope = Envelope(
+                id=_new_msg_id(),
+                type="lease.granted",
+                session_id=state.session_id,
+                correlation_id=env.id,
+                payload=LeaseGrantedPayload(
+                    lease_id=lease.lease_id,
+                    permission=lease.permission,
+                    resource=lease.resource,
+                    operation=lease.operation,
+                    expires_at=lease.expires_at_iso,
+                ).model_dump(exclude_none=True),
+            )
+            await rt._send(state, granted_envelope)
+            state.pending.resolve(
+                cid,
+                {
+                    "__type__": "permission.grant",
+                    "lease_id": lease.lease_id,
+                    "expires_at": lease.expires_at_iso,
+                    "permission": lease.permission,
+                },
+            )
+
+        async def _handle_permission_deny(
+            rt: ARCPRuntime, state: SessionState, env: Envelope
+        ) -> None:
+            cid = env.correlation_id
+            if cid is None:
+                raise ARCPError(
+                    ErrorCode.INVALID_ARGUMENT, "permission.deny missing correlation_id"
+                )
+            payload = PermissionDenyPayload.model_validate(env.payload)
+            state.pending.resolve(
+                cid,
+                {
+                    "__type__": "permission.deny",
+                    "permission": payload.permission,
+                    "reason": payload.reason,
+                },
+            )
+
+        async def _handle_lease_refresh(
+            rt: ARCPRuntime, state: SessionState, env: Envelope
+        ) -> None:
+            payload = LeaseRefreshPayload.model_validate(env.payload)
+            leases = rt._lease_managers[state.session_id]
+            lease = leases.extend(payload.lease_id, payload.extension_seconds)
+            extended = Envelope(
+                id=_new_msg_id(),
+                type="lease.extended",
+                session_id=state.session_id,
+                correlation_id=env.id,
+                payload=LeaseExtendedPayload(
+                    lease_id=lease.lease_id, expires_at=lease.expires_at_iso
+                ).model_dump(),
+            )
+            await rt._send(state, extended)
+
+        async def _handle_lease_revoked(
+            rt: ARCPRuntime, state: SessionState, env: Envelope
+        ) -> None:
+            payload = LeaseRevokedPayload.model_validate(env.payload)
+            leases = rt._lease_managers[state.session_id]
+            leases.revoke(payload.lease_id, reason=payload.reason)
+
         self.register_handler("ping", _handle_ping)
         self.register_handler("session.close", _handle_close)
         self.register_handler("tool.invoke", _handle_tool_invoke)
         self.register_handler("cancel", _handle_cancel)
+        self.register_handler("human.input.response", _handle_human_input_response)
+        self.register_handler("human.choice.response", _handle_human_choice_response)
+        self.register_handler("permission.grant", _handle_permission_grant)
+        self.register_handler("permission.deny", _handle_permission_deny)
+        self.register_handler("lease.refresh", _handle_lease_refresh)
+        self.register_handler("lease.revoked", _handle_lease_revoked)
 
     async def serve_session(self, transport: Transport) -> None:
         """Drive a full session over ``transport`` until close.
@@ -282,6 +402,7 @@ class ARCPRuntime:
         self._bind_transport(result.state.session_id, transport)
         streams = StreamManager()
         self._stream_managers[result.state.session_id] = streams
+        self._lease_managers[result.state.session_id] = LeaseManager()
         bound_state = result.state
 
         async def _sink(env: Envelope) -> None:
@@ -295,6 +416,7 @@ class ARCPRuntime:
         self._job_managers[result.state.session_id] = JobManager(
             sink=_sink,
             streams=streams,
+            pending=bound_state.pending,
             heartbeat_interval_seconds=hb_interval,
             heartbeat_recovery=self.config.advertised_capabilities.heartbeat_recovery,
             miss_threshold=self.config.heartbeat_miss_threshold,
