@@ -129,7 +129,12 @@ class ARCPClient:
             raise RuntimeError("client is not open")
         await self.transport.send(envelope.to_wire())
 
-    async def request(self, envelope: Envelope, *, timeout: float | None = None) -> Envelope:
+    async def request(
+        self,
+        envelope: Envelope,
+        *,
+        timeout: float | None = None,  # noqa: ASYNC109 — public API; pass-through to asyncio.timeout below.
+    ) -> Envelope:
         """Send a command and await the envelope whose ``correlation_id`` matches.
 
         ``correlation_id`` matching is keyed on the outbound envelope's ``id``.
@@ -142,7 +147,8 @@ class ARCPClient:
         self._waiters[envelope.id] = future
         try:
             await self.transport.send(envelope.to_wire())
-            return await asyncio.wait_for(future, timeout=timeout)
+            async with asyncio.timeout(timeout):
+                return await future
         finally:
             self._waiters.pop(envelope.id, None)
 

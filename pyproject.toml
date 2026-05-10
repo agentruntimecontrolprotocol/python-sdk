@@ -84,7 +84,9 @@ ignore = [
 [tool.ruff.lint.per-file-ignores]
 # Tools (`async def f(ctx, args)`) and inbound handlers (`async def h(env)`)
 # have protocol-mandated signatures; unused-arg lints are noise here.
-"tests/**" = ["B011", "ARG001", "ARG002"]
+# ASYNC109 in tests fires on test-helper polling deadlines that use a
+# `timeout=` parameter as a wall-clock budget rather than asyncio.timeout().
+"tests/**" = ["B011", "ARG001", "ARG002", "ASYNC109"]
 "examples/**" = ["ARG001", "ARG002"]
 
 [tool.ruff.lint.pydocstyle]

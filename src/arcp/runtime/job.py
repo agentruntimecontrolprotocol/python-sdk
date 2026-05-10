@@ -259,7 +259,8 @@ class JobContext:
         await self.sink(envelope)
         timeout = max(0.0, _seconds_until(expires_at))
         try:
-            response = await asyncio.wait_for(future, timeout=timeout)
+            async with asyncio.timeout(timeout):
+                response = await future
         except TimeoutError as exc:
             self.pending.cancel(request_id)
             if default is not None:
@@ -327,7 +328,8 @@ class JobContext:
         await self.sink(envelope)
         timeout = max(0.0, _seconds_until(expires_at))
         try:
-            response = await asyncio.wait_for(future, timeout=timeout)
+            async with asyncio.timeout(timeout):
+                response = await future
         except TimeoutError as exc:
             self.pending.cancel(request_id)
             self.job.state = prior_state
