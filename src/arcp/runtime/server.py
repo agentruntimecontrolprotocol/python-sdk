@@ -13,6 +13,7 @@ handlers. The dispatch table is populated incrementally across phases:
 
 from __future__ import annotations
 
+import asyncio
 import uuid
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, field
@@ -24,10 +25,17 @@ from arcp.envelope import Envelope
 from arcp.errors import ARCPError, ErrorCode
 from arcp.extensions import classify_unknown
 from arcp.messages import validate_payload
+from arcp.messages.artifacts import (
+    ArtifactFetchPayload,
+    ArtifactPutPayload,
+    ArtifactRefPayload,
+    ArtifactReleasePayload,
+)
 from arcp.messages.control import (
     CancelAcceptedPayload,
     CancelPayload,
     CancelRefusedPayload,
+    ResumePayload,
 )
 from arcp.messages.execution import ToolInvokePayload
 from arcp.messages.permissions import (
@@ -43,10 +51,19 @@ from arcp.messages.session import (
     RuntimeIdentity,
     SessionUnauthenticatedPayload,
 )
+from arcp.messages.subscriptions import (
+    SubscribeAcceptedPayload,
+    SubscribeClosedPayload,
+    SubscribeEventPayload,
+    SubscribePayload,
+    UnsubscribePayload,
+)
+from arcp.runtime.artifact import ArtifactStore
 from arcp.runtime.job import JobManager
 from arcp.runtime.lease import LeaseManager
 from arcp.runtime.session import HandshakeDriver, SessionPhase, SessionState
 from arcp.runtime.stream import StreamManager
+from arcp.runtime.subscription import SubscriptionManager
 from arcp.store.eventlog import EventLog
 from arcp.transport.base import Transport, TransportClosed
 
@@ -91,6 +108,11 @@ class ARCPRuntime:
     _lease_managers: dict[str, LeaseManager] = field(
         default_factory=dict[str, LeaseManager]
     )
+    _subscription_manager: SubscriptionManager | None = None
+    _subscription_pumps: set[asyncio.Task[None]] = field(
+        default_factory=set[asyncio.Task[None]]
+    )
+    _artifact_store: ArtifactStore | None = None
     _started: bool = False
 
     def register_tool(self, name: str, impl: ToolImpl) -> None:
@@ -116,8 +138,27 @@ class ARCPRuntime:
             jwt_validator=self.config.jwt_validator,
             session_lifetime_seconds=self.config.session_lifetime_seconds,
         )
+        self._subscription_manager = SubscriptionManager(event_log=self._event_log)
+        retention = self.config.advertised_capabilities.artifact_retention or {}
+        self._artifact_store = ArtifactStore(
+            self._event_log,
+            default_retention_seconds=int(retention.get("default_seconds", 3600)),
+            max_retention_seconds=int(retention.get("max_seconds", 86400)),
+        )
         self._register_default_handlers()
         self._started = True
+
+    @property
+    def subscriptions(self) -> SubscriptionManager:
+        if self._subscription_manager is None:
+            raise RuntimeError("ARCPRuntime not started")
+        return self._subscription_manager
+
+    @property
+    def artifacts(self) -> ArtifactStore:
+        if self._artifact_store is None:
+            raise RuntimeError("ARCPRuntime not started")
+        return self._artifact_store
 
     async def close(self) -> None:
         if self._event_log is not None:
@@ -315,6 +356,178 @@ class ARCPRuntime:
             leases = rt._lease_managers[state.session_id]
             leases.revoke(payload.lease_id, reason=payload.reason)
 
+        async def _handle_subscribe(
+            rt: ARCPRuntime, state: SessionState, env: Envelope
+        ) -> None:
+            from arcp.messages.subscriptions import SubscribeFilter
+
+            payload = SubscribePayload.model_validate(env.payload)
+
+            def _authorize(filt: SubscribeFilter) -> None:
+                # v0.1: subscribers may observe their own session, or any
+                # session if their identity carries the synthetic principal
+                # role 'arcp.observer.all'.
+                if filt.session_id is None:
+                    return
+                principal_is_global = state.principal == "arcp.observer.all"
+                for sid in filt.session_id:
+                    if sid != state.session_id and not principal_is_global:
+                        raise ARCPError(
+                            ErrorCode.PERMISSION_DENIED,
+                            f"session {sid!r} not observable by this subscriber",
+                        )
+
+            sub = await rt.subscriptions.subscribe(
+                subscriber_session_id=state.session_id,
+                payload=payload,
+                is_authorized=_authorize,
+            )
+            accepted_env = Envelope(
+                id=_new_msg_id(),
+                type="subscribe.accepted",
+                session_id=state.session_id,
+                correlation_id=env.id,
+                subscription_id=sub.subscription_id,
+                payload=SubscribeAcceptedPayload(
+                    subscription_id=sub.subscription_id
+                ).model_dump(),
+            )
+            await rt._send(state, accepted_env)
+
+            async def _pump() -> None:
+                while True:
+                    item = await sub.queue.get()
+                    if item is None:
+                        return
+                    delivery = Envelope(
+                        id=_new_msg_id(),
+                        type="subscribe.event",
+                        session_id=state.session_id,
+                        subscription_id=sub.subscription_id,
+                        payload=SubscribeEventPayload(event=item.to_wire()).model_dump(),
+                    )
+                    try:
+                        await rt._send(state, delivery)
+                    except Exception:
+                        return
+
+            task = asyncio.create_task(_pump())
+            rt._subscription_pumps.add(task)
+            task.add_done_callback(rt._subscription_pumps.discard)
+
+        async def _handle_unsubscribe(
+            rt: ARCPRuntime, state: SessionState, env: Envelope
+        ) -> None:
+            payload = UnsubscribePayload.model_validate(env.payload)
+            sub = await rt.subscriptions.close(payload.subscription_id)
+            closed = Envelope(
+                id=_new_msg_id(),
+                type="subscribe.closed",
+                session_id=state.session_id,
+                subscription_id=sub.subscription_id,
+                correlation_id=env.id,
+                payload=SubscribeClosedPayload(
+                    subscription_id=sub.subscription_id,
+                    code=str(ErrorCode.OK),
+                    reason="unsubscribed by client",
+                ).model_dump(),
+            )
+            await rt._send(state, closed)
+
+        async def _handle_artifact_put(
+            rt: ARCPRuntime, state: SessionState, env: Envelope
+        ) -> None:
+            payload = ArtifactPutPayload.model_validate(env.payload)
+            record = await rt.artifacts.put(
+                session_id=state.session_id,
+                media_type=payload.media_type,
+                data_b64=payload.data,
+                sha256=payload.sha256,
+                expires_at=payload.expires_at,
+            )
+            ref = Envelope(
+                id=_new_msg_id(),
+                type="artifact.ref",
+                session_id=state.session_id,
+                correlation_id=env.id,
+                payload=ArtifactRefPayload(
+                    artifact_id=record.artifact_id,
+                    uri=f"arcp://session/{state.session_id}/artifact/{record.artifact_id}",
+                    media_type=record.media_type,
+                    size=record.size,
+                    sha256=record.sha256,
+                    expires_at=record.expires_at,
+                ).model_dump(exclude_none=True),
+            )
+            await rt._send(state, ref)
+
+        async def _handle_artifact_fetch(
+            rt: ARCPRuntime, state: SessionState, env: Envelope
+        ) -> None:
+            payload = ArtifactFetchPayload.model_validate(env.payload)
+            record = await rt.artifacts.fetch(
+                session_id=state.session_id, artifact_id=payload.artifact_id
+            )
+            response = Envelope(
+                id=_new_msg_id(),
+                type="artifact.ref",
+                session_id=state.session_id,
+                correlation_id=env.id,
+                payload={
+                    "artifact_id": record["artifact_id"],
+                    "uri": f"arcp://session/{state.session_id}/artifact/{record['artifact_id']}",
+                    "media_type": record["media_type"],
+                    "size": record["size"],
+                    "sha256": record["sha256"],
+                    "expires_at": record["expires_at"],
+                    "data": record["data"],
+                },
+            )
+            await rt._send(state, response)
+
+        async def _handle_artifact_release(
+            rt: ARCPRuntime, state: SessionState, env: Envelope
+        ) -> None:
+            payload = ArtifactReleasePayload.model_validate(env.payload)
+            await rt.artifacts.release(
+                session_id=state.session_id, artifact_id=payload.artifact_id
+            )
+            ack = Envelope(
+                id=_new_msg_id(),
+                type="ack",
+                session_id=state.session_id,
+                correlation_id=env.id,
+                payload={"note": f"artifact {payload.artifact_id} released"},
+            )
+            await rt._send(state, ack)
+
+        async def _handle_resume(
+            rt: ARCPRuntime, state: SessionState, env: Envelope
+        ) -> None:
+            payload = ResumePayload.model_validate(env.payload)
+            if payload.checkpoint_id is not None:
+                raise ARCPError(
+                    ErrorCode.UNIMPLEMENTED,
+                    "checkpoint-based resume not supported in v0.1",
+                )
+            if payload.after_message_id is None:
+                raise ARCPError(
+                    ErrorCode.INVALID_ARGUMENT,
+                    "resume requires after_message_id in v0.1",
+                )
+            anchor = await rt.event_log.has_message(
+                session_id=state.session_id, message_id=payload.after_message_id
+            )
+            if not anchor:
+                raise ARCPError(
+                    ErrorCode.DATA_LOSS,
+                    f"resume anchor {payload.after_message_id!r} not in retained log",
+                )
+            async for replay in rt.event_log.replay(
+                session_id=state.session_id, after_message_id=payload.after_message_id
+            ):
+                await rt._send_raw(rt._transports[state.session_id], replay)
+
         self.register_handler("ping", _handle_ping)
         self.register_handler("session.close", _handle_close)
         self.register_handler("tool.invoke", _handle_tool_invoke)
@@ -325,6 +538,12 @@ class ARCPRuntime:
         self.register_handler("permission.deny", _handle_permission_deny)
         self.register_handler("lease.refresh", _handle_lease_refresh)
         self.register_handler("lease.revoked", _handle_lease_revoked)
+        self.register_handler("subscribe", _handle_subscribe)
+        self.register_handler("unsubscribe", _handle_unsubscribe)
+        self.register_handler("artifact.put", _handle_artifact_put)
+        self.register_handler("artifact.fetch", _handle_artifact_fetch)
+        self.register_handler("artifact.release", _handle_artifact_release)
+        self.register_handler("resume", _handle_resume)
 
     async def serve_session(self, transport: Transport) -> None:
         """Drive a full session over ``transport`` until close.
@@ -466,18 +685,18 @@ class ARCPRuntime:
         await self._nack(state, envelope, ErrorCode.UNIMPLEMENTED, decision.reason)
 
     async def _send(self, state: SessionState, envelope: Envelope) -> None:
-        """Persist + forward via the session's bound transport.
+        """Persist + forward via the session's bound transport, then broadcast.
 
-        v0.1 keeps the transport reference on the active dispatch frame,
-        so this helper is a no-op until the transport mapping is wired
-        in subsequent phases. Logging-only here lets handlers be written
-        in the right shape ahead of time.
+        Every emitted envelope is appended to the event log and broadcast to
+        the SubscriptionManager so observers receive it (RFC §13).
         """
 
         await self.event_log.append(envelope)
         transport = self._transports.get(state.session_id)
         if transport is not None:
             await self._send_raw(transport, envelope)
+        if self._subscription_manager is not None and envelope.type != "subscribe.event":
+            await self._subscription_manager.broadcast(envelope)
 
     async def _send_raw(self, transport: Transport, envelope: Envelope) -> None:
         await transport.send(envelope.to_wire())

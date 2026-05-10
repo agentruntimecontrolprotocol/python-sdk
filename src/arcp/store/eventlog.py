@@ -67,6 +67,12 @@ class EventLog:
             raise RuntimeError("EventLog is not open; call open() or use 'async with'")
         return self._db
 
+    @property
+    def connection(self) -> aiosqlite.Connection:
+        """Expose the underlying connection for sibling stores (e.g. artifacts)."""
+
+        return self._conn
+
     async def append(self, envelope: Envelope) -> bool:
         """Append ``envelope``. Idempotent on ``(session_id, id)``.
 
