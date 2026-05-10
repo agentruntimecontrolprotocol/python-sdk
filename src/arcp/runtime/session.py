@@ -271,7 +271,7 @@ class HandshakeDriver:
 
     def _materialize_session(
         self,
-        envelope: Envelope,
+        _envelope: Envelope,
         payload: SessionOpenPayload,
         capabilities: Capabilities,
         principal: str,

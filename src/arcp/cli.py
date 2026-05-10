@@ -90,7 +90,7 @@ def serve(transport: str, bind: str, token: tuple[str, ...]) -> None:
         )
     )
 
-    async def _echo(ctx: JobContext, args: dict[str, Any]) -> dict[str, Any]:
+    async def _echo(_ctx: JobContext, args: dict[str, Any]) -> dict[str, Any]:
         return {"echo": args}
 
     rt.register_tool("echo", _echo)

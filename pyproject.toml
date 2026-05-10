@@ -76,7 +76,10 @@ ignore = [
 ]
 
 [tool.ruff.lint.per-file-ignores]
-"tests/**" = ["B011"]
+# Tools (`async def f(ctx, args)`) and inbound handlers (`async def h(env)`)
+# have protocol-mandated signatures; unused-arg lints are noise here.
+"tests/**" = ["B011", "ARG001", "ARG002"]
+"examples/**" = ["ARG001", "ARG002"]
 
 [tool.ruff.lint.pydocstyle]
 convention = "google"

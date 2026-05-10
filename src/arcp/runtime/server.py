@@ -237,7 +237,7 @@ class ARCPRuntime:
                 await rt._send(state, refused)
 
         async def _handle_human_input_response(
-            rt: ARCPRuntime, state: SessionState, env: Envelope
+            _rt: ARCPRuntime, state: SessionState, env: Envelope
         ) -> None:
             cid = env.correlation_id
             if cid is None:
@@ -247,7 +247,7 @@ class ARCPRuntime:
             state.pending.resolve(cid, dict(env.payload))
 
         async def _handle_human_choice_response(
-            rt: ARCPRuntime, state: SessionState, env: Envelope
+            _rt: ARCPRuntime, state: SessionState, env: Envelope
         ) -> None:
             cid = env.correlation_id
             if cid is None:
@@ -297,7 +297,7 @@ class ARCPRuntime:
             )
 
         async def _handle_permission_deny(
-            rt: ARCPRuntime, state: SessionState, env: Envelope
+            _rt: ARCPRuntime, state: SessionState, env: Envelope
         ) -> None:
             cid = env.correlation_id
             if cid is None:
@@ -615,7 +615,7 @@ class ARCPRuntime:
         return result.state
 
     async def _dispatch_envelope(
-        self, transport: Transport, state: SessionState, envelope: Envelope
+        self, _transport: Transport, state: SessionState, envelope: Envelope
     ) -> None:
         # Persist inbound for dedupe & resume.
         was_new = await self.event_log.append(envelope)
