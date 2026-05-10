@@ -1,0 +1,54 @@
+# ARCP Python Examples — dependencies
+#
+# Install:  pip install -r examples/requirements.txt
+# Run any:  python examples/01_sysops/main.py
+#
+# Every example uses the SDK (arcp) and the Core group. Provider/destination/
+# auth/observability groups are imported only by the examples that need them;
+# the imports are still installed unconditionally because partial installs
+# don't compose cleanly with the per-example test suite.
+
+# ---- Core (every example) -----------------------------------------------
+# The SDK is consumed as a sibling install. From the repo root:
+#   pip install -e python-sdk
+# (or via the SDK's own dev workflow). PyPI install would be `arcp>=0.1`.
+pydantic>=2.6
+structlog>=24
+python-ulid>=2
+pyyaml>=6
+jsonschema>=4
+
+# ---- LLM providers ------------------------------------------------------
+anthropic>=0.40
+openai>=1.50            # used by OpenAI and DeepSeek (OpenAI-compatible)
+google-genai>=0.3
+zhipuai>=2.0
+litellm>=1.50
+
+# ---- Destinations -------------------------------------------------------
+httpx>=0.27
+python-telegram-bot>=21
+aiosmtplib>=3
+
+# ---- Auth ---------------------------------------------------------------
+pyjwt[crypto]>=2.9
+cryptography>=42
+ldap3>=2.9
+
+# ---- Observability ------------------------------------------------------
+langfuse>=2.50
+datadog>=0.50
+opentelemetry-api>=1.27
+opentelemetry-sdk>=1.27
+opentelemetry-exporter-otlp>=1.27
+
+# ---- Testing ------------------------------------------------------------
+pytest>=8
+pytest-asyncio>=0.24
+pytest-cov>=5
+pytest-timeout>=2.3
+hypothesis>=6
+respx>=0.21
+
+# Optional: real RTL-SDR hardware for example 4
+# pyrtlsdr>=0.3
