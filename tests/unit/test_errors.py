@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pytest
 
-from arcp.errors import ARCPError, ErrorCode, is_retryable_default
+from arcp.errors import ARCPError, ErrorCode, error_code_from_wire, is_retryable_default
 
 
 @pytest.mark.parametrize(
@@ -77,3 +77,16 @@ def test_error_explicit_retryable_overrides_default() -> None:
     err = ARCPError(ErrorCode.INTERNAL, "x", retryable=False)
     assert err.retryable is False
     assert err.to_payload()["retryable"] is False
+
+
+def test_error_code_from_wire_accepts_canonical_strings() -> None:
+    assert error_code_from_wire("INVALID_ARGUMENT") is ErrorCode.INVALID_ARGUMENT
+
+
+def test_error_code_from_wire_unknown_string_maps_to_unknown() -> None:
+    assert error_code_from_wire("arcpx.vendor.CUSTOM") is ErrorCode.UNKNOWN
+
+
+def test_error_code_from_wire_empty_uses_default() -> None:
+    assert error_code_from_wire("") is ErrorCode.UNAUTHENTICATED
+    assert error_code_from_wire(None) is ErrorCode.UNAUTHENTICATED

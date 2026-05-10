@@ -55,6 +55,25 @@ def is_retryable_default(code: ErrorCode) -> bool:
     return code in _RETRYABLE_DEFAULTS
 
 
+def error_code_from_wire(
+    value: object,
+    *,
+    default: ErrorCode = ErrorCode.UNAUTHENTICATED,
+) -> ErrorCode:
+    """Map a wire ``code`` string to :class:`ErrorCode`.
+
+    Unknown or non-string values become ``default``; strings that are not
+    canonical ARCP codes become :data:`ErrorCode.UNKNOWN` (RFC §18 allows
+    deployment-specific codes, but this enum only models the canonical set).
+    """
+    if not isinstance(value, str) or not value:
+        return default
+    try:
+        return ErrorCode(value)
+    except ValueError:
+        return ErrorCode.UNKNOWN
+
+
 class ARCPError(Exception):
     """Structured exception type matching the §18.1 error envelope.
 

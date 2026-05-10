@@ -11,7 +11,7 @@ from typing import Any
 import structlog
 
 from arcp.envelope import Envelope
-from arcp.errors import ARCPError, ErrorCode
+from arcp.errors import ARCPError, ErrorCode, error_code_from_wire
 from arcp.messages.session import (
     AuthBlock,
     Capabilities,
@@ -98,9 +98,13 @@ class ARCPClient:
                 return accepted
 
             if response.type == "session.rejected":
+                code = error_code_from_wire(
+                    response.payload.get("code"),
+                    default=ErrorCode.UNAUTHENTICATED,
+                )
                 raise ARCPError(
-                    ErrorCode(response.payload.get("code", "UNAUTHENTICATED")),
-                    response.payload.get("message", "session rejected"),
+                    code,
+                    str(response.payload.get("message") or "session rejected"),
                 )
 
             if response.type == "session.challenge":

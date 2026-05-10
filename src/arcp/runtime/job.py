@@ -380,7 +380,16 @@ class JobContext:
         )
         future = self.pending.register(request_id)
         await self.sink(envelope)
-        response = await future
+        try:
+            async with asyncio.timeout(float(requested_lease_seconds)):
+                response = await future
+        except TimeoutError as exc:
+            self.pending.cancel(request_id)
+            self.job.state = prior_state
+            raise ARCPError(
+                ErrorCode.DEADLINE_EXCEEDED,
+                "permission request timed out",
+            ) from exc
         self.job.state = prior_state
         if response.get("__type__") == "permission.deny":
             raise ARCPError(
