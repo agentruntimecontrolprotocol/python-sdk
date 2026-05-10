@@ -3,7 +3,7 @@ name = "arcp"
 version = "0.1.0"
 description = "Reference Python implementation of the Agent Runtime Control Protocol (ARCP) v1.0"
 readme = "README.md"
-requires-python = ">=3.12"
+requires-python = ">=3.13"
 license = { text = "Apache-2.0" }
 authors = [{ name = "ARCP Reference" }]
 dependencies = [
@@ -23,6 +23,7 @@ dev = [
     "pytest-cov>=5",
     "ruff>=0.6",
     "pyright>=1.1",
+    "pre-commit>=3",
 ]
 
 [project.scripts]
@@ -38,9 +39,10 @@ packages = ["src/arcp"]
 [tool.pyright]
 include = ["src/arcp", "tests"]
 strict = ["src/arcp"]
-pythonVersion = "3.12"
+pythonVersion = "3.13"
 typeCheckingMode = "strict"
 reportMissingTypeStubs = false
+# Phase 3 narrows these on public modules; Phase 5 drops them entirely.
 reportUnknownMemberType = false
 reportUnknownVariableType = false
 reportUnknownArgumentType = false
@@ -48,20 +50,50 @@ reportUnknownParameterType = false
 
 [tool.ruff]
 line-length = 100
-target-version = "py312"
+target-version = "py313"
 src = ["src", "tests"]
 
 [tool.ruff.lint]
-select = ["E", "F", "W", "I", "B", "UP", "N", "RUF"]
-ignore = ["E501"]
+# Phase 9 adds "D" (pydocstyle).
+select = [
+    "E", "W",
+    "F",
+    "I",
+    "N",
+    "UP",
+    "B",
+    "C4",
+    "SIM",
+    "RUF",
+    "PTH",
+    "PT",
+    "RET",
+    "TRY",
+    "ASYNC",
+    "ERA",
+    "ARG",
+    "SLF",
+    "TID",
+    "PERF",
+]
+ignore = [
+    "E501",  # line-too-long: handled by ruff format; surfaced cases are pydantic Field descriptions.
+]
 
 [tool.ruff.lint.per-file-ignores]
 "tests/**" = ["B011"]
 
+[tool.ruff.lint.pydocstyle]
+convention = "google"
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 asyncio_mode = "auto"
-addopts = "-ra"
+addopts = "-ra --strict-markers --strict-config"
 filterwarnings = [
     "error",
     "ignore::DeprecationWarning",

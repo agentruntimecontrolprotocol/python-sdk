@@ -1,0 +1,96 @@
+examples/03_human_input_request.py:19:34: ARG001 Unused function argument: `args`
+examples/04_permission_challenge.py:18:35: ARG001 Unused function argument: `args`
+examples/_common.py:60:9: SIM105 Use `contextlib.suppress(BaseException)` instead of `try`-`except`-`pass`
+src/arcp/cli.py:94:21: ARG001 Unused function argument: `ctx`
+src/arcp/client/client.py:58:19: TRY003 Avoid specifying long messages outside the exception class
+src/arcp/client/client.py:65:19: TRY003 Avoid specifying long messages outside the exception class
+src/arcp/client/client.py:125:19: TRY003 Avoid specifying long messages outside the exception class
+src/arcp/client/client.py:129:38: ASYNC109 Async function definition with a `timeout` parameter
+src/arcp/client/client.py:137:19: TRY003 Avoid specifying long messages outside the exception class
+src/arcp/envelope.py:65:19: TRY003 Avoid specifying long messages outside the exception class
+src/arcp/runtime/pending.py:24:19: TRY003 Avoid specifying long messages outside the exception class
+src/arcp/runtime/server.py:126:19: TRY003 Avoid specifying long messages outside the exception class
+src/arcp/runtime/server.py:154:19: TRY003 Avoid specifying long messages outside the exception class
+src/arcp/runtime/server.py:160:19: TRY003 Avoid specifying long messages outside the exception class
+src/arcp/runtime/server.py:171:19: TRY003 Avoid specifying long messages outside the exception class
+src/arcp/runtime/server.py:238:21: TRY301 Abstract `raise` to an inner function
+src/arcp/runtime/server.py:258:13: ARG001 Unused function argument: `rt`
+src/arcp/runtime/server.py:268:13: ARG001 Unused function argument: `rt`
+src/arcp/runtime/server.py:318:13: ARG001 Unused function argument: `rt`
+src/arcp/runtime/server.py:648:15: ARG002 Unused method argument: `transport`
+src/arcp/runtime/session.py:274:9: ARG002 Unused method argument: `envelope`
+src/arcp/runtime/subscription.py:41:5: SIM102 Use a single `if` statement instead of nested `if` statements
+src/arcp/store/eventlog.py:67:19: TRY003 Avoid specifying long messages outside the exception class
+src/arcp/transport/in_memory.py:29:19: TRY003 Avoid specifying long messages outside the exception class
+src/arcp/transport/in_memory.py:35:19: TRY003 Avoid specifying long messages outside the exception class
+src/arcp/transport/stdio.py:27:19: TRY003 Avoid specifying long messages outside the exception class
+src/arcp/transport/stdio.py:36:19: TRY003 Avoid specifying long messages outside the exception class
+src/arcp/transport/stdio.py:44:9: SIM105 Use `contextlib.suppress(Exception)` instead of `try`-`except`-`pass`
+src/arcp/transport/websocket.py:30:19: TRY003 Avoid specifying long messages outside the exception class
+src/arcp/transport/websocket.py:35:19: TRY003 Avoid specifying long messages outside the exception class
+src/arcp/transport/websocket.py:42:19: TRY003 Avoid specifying long messages outside the exception class
+src/arcp/transport/websocket.py:52:9: SIM105 Use `contextlib.suppress(Exception)` instead of `try`-`except`-`pass`
+tests/e2e/test_relay_scenario.py:33:36: ARG001 Unused function argument: `args`
+tests/e2e/test_relay_scenario.py:144:9: SIM105 Use `contextlib.suppress(Exception)` instead of `try`-`except`-`pass`
+tests/e2e/test_relay_scenario.py:173:9: SIM105 Use `contextlib.suppress(BaseException)` instead of `try`-`except`-`pass`
+tests/integration/conftest.py:72:9: SIM105 Use `contextlib.suppress(BaseException)` instead of `try`-`except`-`pass`
+tests/integration/test_cancellation.py:21:5: ASYNC109 Async function definition with a `timeout` parameter
+tests/integration/test_cancellation.py:31:19: TRY003 Avoid specifying long messages outside the exception class
+tests/integration/test_cancellation.py:43:37: ARG001 Unused function argument: `args`
+tests/integration/test_cancellation.py:89:20: ARG001 Unused function argument: `ctx`
+tests/integration/test_cancellation.py:89:37: ARG001 Unused function argument: `args`
+tests/integration/test_cancellation.py:126:24: ARG001 Unused function argument: `ctx`
+tests/integration/test_cancellation.py:126:41: ARG001 Unused function argument: `args`
+tests/integration/test_client_handlers.py:30:38: ARG001 Unused function argument: `args`
+tests/integration/test_client_handlers.py:38:25: ARG001 Unused function argument: `env`
+tests/integration/test_client_handlers.py:71:5: SIM105 Use `contextlib.suppress(BaseException)` instead of `try`-`except`-`pass`
+tests/integration/test_client_handlers.py:84:39: ARG001 Unused function argument: `args`
+tests/integration/test_client_handlers.py:92:23: ARG001 Unused function argument: `env`
+tests/integration/test_client_handlers.py:108:5: SIM105 Use `contextlib.suppress(BaseException)` instead of `try`-`except`-`pass`
+tests/integration/test_handshake.py:55:9: SIM105 Use `contextlib.suppress(BaseException)` instead of `try`-`except`-`pass`
+tests/integration/test_handshake.py:86:9: SIM105 Use `contextlib.suppress(BaseException)` instead of `try`-`except`-`pass`
+tests/integration/test_handshake.py:117:9: SIM105 Use `contextlib.suppress(BaseException)` instead of `try`-`except`-`pass`
+tests/integration/test_handshake.py:149:9: SIM105 Use `contextlib.suppress(BaseException)` instead of `try`-`except`-`pass`
+tests/integration/test_handshake.py:181:9: SIM105 Use `contextlib.suppress(BaseException)` instead of `try`-`except`-`pass`
+tests/integration/test_heartbeat.py:41:22: ARG001 Unused function argument: `ctx`
+tests/integration/test_heartbeat.py:41:39: ARG001 Unused function argument: `args`
+tests/integration/test_heartbeat.py:68:19: TRY003 Avoid specifying long messages outside the exception class
+tests/integration/test_heartbeat.py:75:9: SIM105 Use `contextlib.suppress(BaseException)` instead of `try`-`except`-`pass`
+tests/integration/test_heartbeat.py:83:39: ARG001 Unused function argument: `args`
+tests/integration/test_heartbeat.py:117:9: SIM105 Use `contextlib.suppress(BaseException)` instead of `try`-`except`-`pass`
+tests/integration/test_human_input.py:28:5: ASYNC109 Async function definition with a `timeout` parameter
+tests/integration/test_human_input.py:38:19: TRY003 Avoid specifying long messages outside the exception class
+tests/integration/test_human_input.py:50:38: ARG001 Unused function argument: `args`
+tests/integration/test_human_input.py:56:16: RET504 Unnecessary assignment to `result` before `return` statement
+tests/integration/test_human_input.py:95:38: ARG001 Unused function argument: `args`
+tests/integration/test_human_input.py:126:38: ARG001 Unused function argument: `args`
+tests/integration/test_human_input.py:154:40: ARG001 Unused function argument: `args`
+tests/integration/test_job_lifecycle.py:21:5: ASYNC109 Async function definition with a `timeout` parameter
+tests/integration/test_job_lifecycle.py:31:19: TRY003 Avoid specifying long messages outside the exception class
+tests/integration/test_job_lifecycle.py:78:20: ARG001 Unused function argument: `ctx`
+tests/integration/test_job_lifecycle.py:78:37: ARG001 Unused function argument: `args`
+tests/integration/test_job_lifecycle.py:123:41: ARG001 Unused function argument: `args`
+tests/integration/test_job_lifecycle.py:157:40: ARG001 Unused function argument: `args`
+tests/integration/test_permission_lease.py:22:5: ASYNC109 Async function definition with a `timeout` parameter
+tests/integration/test_permission_lease.py:32:19: TRY003 Avoid specifying long messages outside the exception class
+tests/integration/test_permission_lease.py:44:39: ARG001 Unused function argument: `args`
+tests/integration/test_permission_lease.py:97:39: ARG001 Unused function argument: `args`
+tests/integration/test_permission_lease.py:138:39: ARG001 Unused function argument: `args`
+tests/integration/test_resume.py:22:5: ASYNC109 Async function definition with a `timeout` parameter
+tests/integration/test_resume.py:32:19: TRY003 Avoid specifying long messages outside the exception class
+tests/integration/test_resume.py:44:20: ARG001 Unused function argument: `ctx`
+tests/integration/test_resume.py:44:37: ARG001 Unused function argument: `args`
+tests/integration/test_stdio_transport.py:77:20: ARG001 Unused function argument: `ctx`
+tests/integration/test_stdio_transport.py:105:19: TRY003 Avoid specifying long messages outside the exception class
+tests/integration/test_stdio_transport.py:112:9: SIM105 Use `contextlib.suppress(BaseException)` instead of `try`-`except`-`pass`
+tests/integration/test_subscription.py:21:5: ASYNC109 Async function definition with a `timeout` parameter
+tests/integration/test_subscription.py:31:19: TRY003 Avoid specifying long messages outside the exception class
+tests/integration/test_subscription.py:43:37: ARG001 Unused function argument: `args`
+tests/integration/test_subscription.py:85:20: ARG001 Unused function argument: `ctx`
+tests/integration/test_subscription.py:85:37: ARG001 Unused function argument: `args`
+tests/integration/test_websocket_transport.py:36:20: ARG001 Unused function argument: `ctx`
+tests/integration/test_websocket_transport.py:71:19: TRY003 Avoid specifying long messages outside the exception class
+tests/integration/test_websocket_transport.py:78:9: SIM105 Use `contextlib.suppress(Exception)` instead of `try`-`except`-`pass`
+tests/unit/test_errors.py:20:5: PT006 Wrong type passed to first argument of `pytest.mark.parametrize`; expected `tuple`
+Found 94 errors.
+No fixes available (19 hidden fixes can be enabled with the `--unsafe-fixes` option).
