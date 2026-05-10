@@ -9,7 +9,7 @@ from __future__ import annotations
 import asyncio
 import json
 import sys
-from typing import Any, cast
+from typing import Any, cast, override
 
 from arcp.transport.base import Transport, TransportClosed
 
@@ -22,6 +22,7 @@ class StdioTransport(Transport):
         self._writer = writer
         self._closed = False
 
+    @override
     async def send(self, envelope: dict[str, Any]) -> None:
         if self._closed:
             raise TransportClosed("transport is closed")
@@ -29,6 +30,7 @@ class StdioTransport(Transport):
         self._writer.write(line.encode("utf-8"))
         await self._writer.drain()
 
+    @override
     async def recv(self) -> dict[str, Any]:
         line = await self._reader.readline()
         if not line:
@@ -37,6 +39,7 @@ class StdioTransport(Transport):
         parsed = json.loads(line.decode("utf-8"))
         return cast("dict[str, Any]", parsed)
 
+    @override
     async def close(self) -> None:
         if self._closed:
             return
@@ -47,6 +50,7 @@ class StdioTransport(Transport):
             pass
 
     @property
+    @override
     def is_closed(self) -> bool:
         return self._closed
 

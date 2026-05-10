@@ -8,7 +8,7 @@ text frame, JSON-encoded.
 from __future__ import annotations
 
 import json
-from typing import Any, cast
+from typing import Any, cast, override
 
 import websockets
 from websockets.asyncio.client import ClientConnection, connect
@@ -25,6 +25,7 @@ class WebSocketTransport(Transport):
         self._ws = ws
         self._closed = False
 
+    @override
     async def send(self, envelope: dict[str, Any]) -> None:
         if self._closed:
             raise TransportClosed("transport is closed")
@@ -34,6 +35,7 @@ class WebSocketTransport(Transport):
             self._closed = True
             raise TransportClosed("websocket closed") from exc
 
+    @override
     async def recv(self) -> dict[str, Any]:
         try:
             raw = await self._ws.recv()
@@ -45,6 +47,7 @@ class WebSocketTransport(Transport):
         parsed = json.loads(raw)
         return cast("dict[str, Any]", parsed)
 
+    @override
     async def close(self) -> None:
         if self._closed:
             return
@@ -55,6 +58,7 @@ class WebSocketTransport(Transport):
             pass
 
     @property
+    @override
     def is_closed(self) -> bool:
         return self._closed
 
@@ -66,5 +70,6 @@ async def connect_websocket(uri: str) -> WebSocketTransport:
     return WebSocketTransport(ws)
 
 
-# Re-export ws_serve so callers can spin up servers without a separate import.
-__all__ = ["WebSocketTransport", "connect_websocket", "ws_serve"]
+# Re-export ws_serve and ServerConnection so callers can spin up servers without a
+# separate import.
+__all__ = ["ServerConnection", "WebSocketTransport", "connect_websocket", "ws_serve"]

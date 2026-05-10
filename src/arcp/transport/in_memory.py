@@ -9,7 +9,7 @@ through Pydantic serialization is the responsibility of higher layers).
 from __future__ import annotations
 
 import asyncio
-from typing import Any
+from typing import Any, override
 
 from arcp.transport.base import Transport, TransportClosed
 
@@ -24,17 +24,20 @@ class InMemoryTransport(Transport):
         self._inbound = inbound
         self._closed = False
 
+    @override
     async def send(self, envelope: dict[str, Any]) -> None:
         if self._closed:
             raise TransportClosed("transport is closed")
         await self._outbound.put(envelope)
 
+    @override
     async def recv(self) -> dict[str, Any]:
         item = await self._inbound.get()
         if item is None:
             raise TransportClosed("transport closed by peer")
         return item
 
+    @override
     async def close(self) -> None:
         if self._closed:
             return
@@ -43,6 +46,7 @@ class InMemoryTransport(Transport):
         await self._outbound.put(None)
 
     @property
+    @override
     def is_closed(self) -> bool:
         return self._closed
 

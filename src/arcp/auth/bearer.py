@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Protocol
+from typing import Protocol, override
 
 from arcp.errors import ARCPError, ErrorCode
 
@@ -24,6 +24,7 @@ class StaticTokenValidator(TokenValidator):
 
     tokens: dict[str, str] = field(default_factory=dict[str, str])
 
+    @override
     def validate(self, token: str) -> str:
         principal = self.tokens.get(token)
         if principal is None:

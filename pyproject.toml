@@ -42,11 +42,6 @@ strict = ["src/arcp"]
 pythonVersion = "3.13"
 typeCheckingMode = "strict"
 reportMissingTypeStubs = false
-# Phase 3 narrows these on public modules; Phase 5 drops them entirely.
-reportUnknownMemberType = false
-reportUnknownVariableType = false
-reportUnknownArgumentType = false
-reportUnknownParameterType = false
 
 [tool.ruff]
 line-length = 100

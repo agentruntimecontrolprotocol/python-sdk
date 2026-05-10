@@ -35,6 +35,7 @@ from arcp.runtime.job import JobContext
 from arcp.runtime.server import ARCPRuntime, RuntimeConfig
 from arcp.store.eventlog import EventLog
 from arcp.transport.websocket import (
+    ServerConnection,
     WebSocketTransport,
     connect_websocket,
     ws_serve,
@@ -98,7 +99,7 @@ def serve(transport: str, bind: str, token: tuple[str, ...]) -> None:
         await rt.start()
         click.echo(f"arcp runtime listening on {transport}://{host}:{port}")
 
-        async def _handler(ws: Any) -> None:
+        async def _handler(ws: ServerConnection) -> None:
             await rt.serve_session(WebSocketTransport(ws))
 
         async with ws_serve(_handler, host, port) as server:
