@@ -10,8 +10,8 @@ for the implementation plan.
 ## Quickstart
 
 ```sh
-cd python-sdk/arcp-sdk
-uv sync --extra dev
+cd python-sdk
+uv sync --group dev
 uv run pytest --cov=arcp
 ```
 
