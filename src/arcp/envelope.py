@@ -78,4 +78,11 @@ class Envelope(BaseModel):
         return cls.model_validate(raw)
 
 
-__all__ = ["Envelope", "Priority"]
+def new_message_id() -> str:
+    """Mint an opaque, globally-unique message id (transport idempotency key)."""
+    import uuid
+
+    return f"msg_{uuid.uuid4().hex[:12]}"
+
+
+__all__ = ["Envelope", "Priority", "new_message_id"]

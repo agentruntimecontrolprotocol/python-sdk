@@ -1,0 +1,5 @@
+arcp>=1.0,<2.0
+SoapySDR>=0.8
+numpy>=2
+scipy>=1.14
+pydantic>=2.7

@@ -1,0 +1,3 @@
+# Examples are illustrative codebases, kept readable at 80 columns.
+extend = "../pyproject.toml"
+line-length = 80

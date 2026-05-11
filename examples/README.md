@@ -1,58 +1,67 @@
-# ARCP Python Examples
+# ARCP Examples
 
-Reference implementations for the [Agent Runtime Control Protocol](../RFC-0001-v2.md). Eleven self-contained applications, one protocol surface each — runnable offline against scripted fixtures, runnable against real services when API keys are present.
+Fourteen single-purpose codebases, each named for the protocol
+primitive it demonstrates.
 
-## Quickstart
+> **Illustrative, not runnable.** Each example imports from the
+> in-repo `arcp` package as if it were a published `arcp>=1.0,<2.0`
+> SDK. Setup boilerplate (transport URL, identity, auth) is elided
+> with `ARCPClient(...)`. LLM and framework calls live in tiny stub
+> files (`agents.py`, `steps.py`, `synth.py`, …) so the protocol
+> code in `main.py` is what you read.
 
-```bash
-# From the python-sdk/ directory (or repository root with this path):
-pip install -e .                                 # install the SDK
-pip install -r examples/requirements.txt         # install example deps
-python examples/01_sysops/main.py                # the simplest example
-```
+## The fourteen
 
-Every example accepts `--provider scripted` (default, no API keys needed). Pass `--provider <vendor>:<model>` and set the corresponding `ARCP_EXAMPLES_<VENDOR>_API_KEY` to run against a real LLM.
-
-## The eleven examples
-
-| # | Name | Demonstrates | LLM | Transport | Auth |
-|---|---|---|---|---|---|
-| [01](01_sysops/) | Sysops Agent | streams, permissions, leases | Anthropic | stdio | none |
-| [02](02_subagents/) | Multi-Agent Research Squad | delegate, subscriptions, cost rollup | mixed | WebSocket | bearer |
-| [03](03_code_review_veto/) | Code-Review Veto | choice request, fan-out HITL, priority | Anthropic | WebSocket | signed_jwt |
-| [04](04_sdr_extension/) | SDR Control Plane | extensions, capability negotiation | GLM-4 | stdio | bearer |
-| [05](05_tiered_handoff/) | Tiered Support Handoff | handoff, runtime identity, cost | Gemini → Anthropic | WebSocket | signed_jwt |
-| [06](06_db_admin_permissions/) | DB Admin Permissions | LDAP auth, lease lifecycle, trust elevation | OpenAI | WebSocket | signed_jwt + LDAP |
-| [07](07_triple_sink_observability/) | Triple-Sink Observability | subscriptions, standard metrics | mixed | WebSocket | bearer |
-| [08](08_openclaw_orchestrator/) | OpenClaw Skill Orchestrator | delegate, resume, observability | Anthropic | WebSocket | signed_jwt |
-| [09](09_litellm_marketplace/) | LiteLLM Marketplace | standard metrics, retryable errors | LiteLLM | WebSocket | bearer |
-| [10](10_durable_research/) | Durable Research Pipeline | resume, artifacts, heartbeats | Anthropic | WebSocket | bearer |
-| [11](11_reasoning_mirror/) | Reasoning Stream Mirror | thought streams, backpressure | OpenAI / DeepSeek | stdio + WebSocket | none |
-
-## Layout
-
-- `_shared/` — provider abstraction, destination relay, auth fixtures, observability sinks, OpenClaw stand-in, transport pairing helper.
-- `NN_name/` — each example is a directory with `main.py`, `runtime.py`, `agent.py`, `fixtures/`, `tests/`, and a `README.md` that follows a strict template.
-- `docs/` — cross-cutting concept docs (providers, destinations, auth, observability, testing).
-- `EXAMPLES_PLAN.md` — running design log.
-
-See [`docs/index.md`](docs/index.md) for a guided tour.
+| Directory | Demonstrates | Spec |
+|---|---|---|
+| [`subscriptions/`](./subscriptions) | Three Observer clients on one session, three filters, three sinks. | §5, §13 |
+| [`leases/`](./leases) | Lease-gated shell agent. Read leases coarse, write leases scoped. | §15.4–§15.5 |
+| [`lease_revocation/`](./lease_revocation) | Per-table leases with `lease.revoked` / `lease.extended` mid-flight. | §15.5 |
+| [`permission_challenge/`](./permission_challenge) | Two-party permission challenge — generator asks, reviewer holds veto. | §15.4, §6.4 |
+| [`delegation/`](./delegation) | `agent.delegate` fan-out + `JobMux` to demux events by `job_id`. | §14, §6.4 |
+| [`handoff/`](./handoff) | `agent.handoff` with transcript packed as an artifact, runtime fingerprint pinned. | §14, §16, §8.3 |
+| [`heartbeats/`](./heartbeats) | Worker federation; heartbeat-loss reroute via `idempotency_key`. | §10.3, §6.4 |
+| [`capability_negotiation/`](./capability_negotiation) | Capability-driven peer routing; standard `cost.usd` rollups. | §7, §17.3.1, §18.3 |
+| [`resumability/`](./resumability) | **Actually crash and resume.** `os._exit` mid-flight; second invocation picks up at the next step. | §10, §19, §6.4 |
+| [`reasoning_streams/`](./reasoning_streams) | `kind: thought` stream + a peer runtime that subscribes and delegates critiques back. | §11.4, §13, §14 |
+| [`extensions/`](./extensions) | Custom `arcpx.sdr.*.v1` extension namespace with correct unknown-message handling. | §21 |
+| [`human_input/`](./human_input) | `human.input.request` fanned across phone/email/Slack; first-wins resolution. | §12 |
+| [`cancellation/`](./cancellation) | Cooperative `cancel` (terminate) vs `interrupt` (pause and ask). | §10.4–§10.5 |
+| [`mcp/`](./mcp) | ARCP runtime fronting an MCP server: `tool.invoke` → MCP `call_tool`. | §20 |
 
 ## Conventions
 
-- Python 3.13, pyright strict, ruff for style. The configuration in [`.ruff.toml`](.ruff.toml) mirrors the SDK's.
-- Every interesting line cites the RFC section it implements, e.g. `# §15.4: emit permission.request and block until grant`.
-- Real-mode tests are guarded by `pytest.mark.skipif(os.getenv(...) is None)`; they skip cleanly when the gating env var is absent.
-- No `print()` outside `main.py` entrypoints; structured logging via `structlog`.
+- Python 3.12+, type-annotated, ruff-clean at line length 80.
+- `examples/ruff.toml` overrides the repo's default 100 just for
+  this directory.
+- Each example is one `main.py` (the protocol code) + 0–2 stub
+  modules named for what they elide (`agents.py`, `steps.py`,
+  `cheap.py`, `synth.py`, `work.py`, `channels.py`, `sql.py`,
+  `upstream.py`).
+- `ARCPClient(...)` literally — transport, identity, and auth
+  blocks are setup noise, not the point.
+- Envelopes match RFC-0001 v2 exactly. Custom message types follow
+  §21.1 `arcpx.<domain>.<name>.v<n>` naming.
 
-## Running the tests
+## What's where in the SDK
 
-```bash
-pytest examples/ -q
-```
+- `arcp.ARCPClient` — handshake driver. Use `client.envelope(type,
+  payload=..., **kwargs)` to mint envelopes with `id` and
+  `session_id` filled in.
+- `arcp.Envelope`, `arcp.ErrorCode`, `arcp.ARCPError` — wire
+  primitives.
+- `arcp.new_message_id()` — for runtime-side code that builds
+  envelopes outside an `ARCPClient`.
+- `arcp.transport.websocket` — most common transport.
+- `arcp.store.eventlog` — SQLite schema reused by `subscriptions`.
 
-From the repository root. Default-mode coverage floor is 85% on the union of `_shared/` and each `NN_name/`.
+## Reading order
 
-## Why these eleven?
+For a brisk tour: `subscriptions`, `leases`, `delegation`,
+`resumability` (this one actually crashes and recovers),
+`cancellation`, `extensions`, `mcp_compat`. These seven exercise
+the bulk of the protocol.
 
-The protocol is small but the surface is broad. Eleven examples lets each pin a distinct primary feature without overlap, while letting incidental cross-feature usage (every example touches §6 envelopes, most touch §10 jobs, several touch §13 subscriptions) build familiarity gradually. The order is rough: simplest first, most service-integrated last.
+## Spec ambiguities surfaced
+
+See [`LEARNED.md`](./LEARNED.md).

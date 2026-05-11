@@ -126,6 +126,55 @@ class ARCPClient:
                 f"unexpected envelope during handshake: {response.type!r}",
             )
 
+    def envelope(
+        self,
+        type: str,  # mirrors Envelope.type
+        *,
+        payload: dict[str, Any] | None = None,
+        job_id: str | None = None,
+        stream_id: str | None = None,
+        subscription_id: str | None = None,
+        correlation_id: str | None = None,
+        causation_id: str | None = None,
+        trace_id: str | None = None,
+        idempotency_key: str | None = None,
+        priority: str | None = None,
+        target: str | None = None,
+        extensions: dict[str, Any] | None = None,
+    ) -> Envelope:
+        """Build an :class:`Envelope` with ``id`` and ``session_id`` filled in.
+
+        Convenience factory so callers don't have to mint message ids and
+        thread the session id by hand. Other envelope fields pass through.
+        """
+        kwargs: dict[str, Any] = {
+            "id": _new_msg_id(),
+            "type": type,
+            "session_id": self.session_id,
+            "payload": payload or {},
+        }
+        if job_id is not None:
+            kwargs["job_id"] = job_id
+        if stream_id is not None:
+            kwargs["stream_id"] = stream_id
+        if subscription_id is not None:
+            kwargs["subscription_id"] = subscription_id
+        if correlation_id is not None:
+            kwargs["correlation_id"] = correlation_id
+        if causation_id is not None:
+            kwargs["causation_id"] = causation_id
+        if trace_id is not None:
+            kwargs["trace_id"] = trace_id
+        if idempotency_key is not None:
+            kwargs["idempotency_key"] = idempotency_key
+        if priority is not None:
+            kwargs["priority"] = priority  # type: ignore[assignment]
+        if target is not None:
+            kwargs["target"] = target
+        if extensions is not None:
+            kwargs["extensions"] = extensions
+        return Envelope(**kwargs)
+
     async def send(self, envelope: Envelope) -> None:
         """Send an envelope on the bound transport."""
         if self.session_id is None:
