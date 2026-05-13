@@ -15,7 +15,9 @@ import asyncio
 from collections.abc import Awaitable, Callable
 
 from mcp import ClientSession  # pyright: ignore[reportMissingImports]
-from mcp.client.stdio import stdio_client  # pyright: ignore[reportMissingImports]
+from mcp.client.stdio import (
+    stdio_client,  # pyright: ignore[reportMissingImports]
+)
 
 from arcp import ARCPError, Envelope, ErrorCode, new_message_id
 
@@ -52,9 +54,7 @@ async def call_via_mcp(
         raise ARCPError(ErrorCode.INTERNAL, str(exc)) from exc
 
     if result.isError:
-        text = "\n".join(
-            getattr(c, "text", "") for c in result.content
-        )
+        text = "\n".join(getattr(c, "text", "") for c in result.content)
         # MCP doesn't carry a typed error code; FAILED_PRECONDITION is
         # the right canonical mapping for "tool ran, said no".
         raise ARCPError(ErrorCode.FAILED_PRECONDITION, text or "tool error")
@@ -74,19 +74,23 @@ async def handle_invoke(
     """One inbound ARCP `tool.invoke` → MCP call → ARCP job lifecycle."""
     job_id = f"job_{new_message_id()[-10:]}"
 
-    await send(Envelope(
-        id=new_message_id(),
-        type="job.accepted",
-        correlation_id=request.id,
-        job_id=job_id,
-        payload={"job_id": job_id, "state": "accepted"},
-    ))
-    await send(Envelope(
-        id=new_message_id(),
-        type="job.started",
-        job_id=job_id,
-        payload={"job_id": job_id},
-    ))
+    await send(
+        Envelope(
+            id=new_message_id(),
+            type="job.accepted",
+            correlation_id=request.id,
+            job_id=job_id,
+            payload={"job_id": job_id, "state": "accepted"},
+        )
+    )
+    await send(
+        Envelope(
+            id=new_message_id(),
+            type="job.started",
+            job_id=job_id,
+            payload={"job_id": job_id},
+        )
+    )
 
     try:
         result = await call_via_mcp(
@@ -95,26 +99,32 @@ async def handle_invoke(
             arguments=dict(request.payload.get("arguments", {})),
         )
     except ARCPError as exc:
-        await send(Envelope(
-            id=new_message_id(),
-            type="job.failed",
-            job_id=job_id,
-            payload=exc.to_payload(),
-        ))
+        await send(
+            Envelope(
+                id=new_message_id(),
+                type="job.failed",
+                job_id=job_id,
+                payload=exc.to_payload(),
+            )
+        )
         return
 
-    await send(Envelope(
-        id=new_message_id(),
-        type="job.completed",
-        job_id=job_id,
-        payload={"result": result},
-    ))
+    await send(
+        Envelope(
+            id=new_message_id(),
+            type="job.completed",
+            job_id=job_id,
+            payload={"result": result},
+        )
+    )
 
 
 async def run_bridge(send: SendEnvelope, inbound) -> None:
     """Wire one MCP session as the upstream for one ARCP runtime."""
-    async with stdio_client(upstream_params()) as (read, write), \
-               ClientSession(read, write) as mcp:
+    async with (
+        stdio_client(upstream_params()) as (read, write),
+        ClientSession(read, write) as mcp,
+    ):
         await mcp.initialize()
         extensions = await advertise_from_mcp(mcp)
         # In production this list would feed `Capabilities.extensions`
