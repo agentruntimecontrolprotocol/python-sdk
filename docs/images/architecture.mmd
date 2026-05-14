@@ -1,0 +1,28 @@
+flowchart TB
+  subgraph Transport[Transport — RFC §22]
+    WS[WebSocket]
+    StdIO[stdio]
+    InMem[in-memory]
+  end
+  subgraph Runtime[ARCPRuntime — RFC §5]
+    Hand[HandshakeDriver — §8]
+    Disp[Dispatcher / Unknown handling — §21.3]
+    Jobs[JobManager — §10]
+    Streams[StreamManager — §11]
+    Subs[SubscriptionManager — §13]
+    Leases[LeaseManager — §15.5]
+    Arts[ArtifactStore — §16]
+    Pending[PendingRequestRegistry — §6.3]
+    Log[(EventLog — SQLite — §6.4 / §13.3 / §19)]
+  end
+  Client[ARCPClient]
+  Client <-->|envelopes| Transport
+  Transport <-->|envelopes| Hand
+  Hand --> Disp
+  Disp --> Jobs --> Streams
+  Disp --> Subs --> Log
+  Disp --> Leases
+  Disp --> Arts
+  Disp --> Pending
+  Jobs --> Pending
+  Pending -.-> Disp
