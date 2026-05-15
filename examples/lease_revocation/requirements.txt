@@ -1,4 +1,0 @@
-arcp>=1.0,<2.0
-sqlglot>=25
-asyncpg>=0.30
-pydantic-ai>=0.0.14

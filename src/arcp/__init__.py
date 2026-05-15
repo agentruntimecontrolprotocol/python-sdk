@@ -1,21 +1,94 @@
-"""ARCP — Agent Runtime Control Protocol reference implementation.
+"""ARCP (Agent Runtime Control Protocol) v1.1 — Python reference SDK."""
 
-Implements the v1.0 protocol surface described in RFC-0001-v2.
-"""
+from __future__ import annotations
 
-from arcp.client.client import ARCPClient
-from arcp.envelope import Envelope, new_message_id
-from arcp.errors import ARCPError, ErrorCode
-from arcp.runtime.server import ARCPRuntime
-from arcp.version import IMPL_VERSION, PROTOCOL_VERSION
+from ._envelope import Envelope
+from ._errors import (
+    ERROR_CODES,
+    AgentNotAvailableError,
+    AgentVersionNotAvailableError,
+    ARCPError,
+    BudgetExhaustedError,
+    CancelledError,
+    DuplicateKeyError,
+    HeartbeatLostError,
+    InternalError,
+    InvalidRequestError,
+    JobNotFoundError,
+    LeaseExpiredError,
+    LeaseSubsetViolationError,
+    PermissionDeniedError,
+    ResumeWindowExpiredError,
+    TimeoutError,
+    UnauthenticatedError,
+    error_class_for,
+    error_from_payload,
+)
+from ._messages.execution import (
+    Lease,
+    LeaseConstraints,
+    parse_agent_ref,
+    parse_budget_amount,
+)
+from ._messages.session import (
+    Capabilities,
+    ClientInfo,
+    ListJobsFilter,
+    RuntimeInfo,
+    SessionResume,
+    SessionWelcomePayload,
+)
+from ._transport.base import Transport, TransportClosed
+from ._transport.in_memory import MemoryTransport, pair_memory_transports
+from ._transport.stdio import StdioTransport
+from ._transport.websocket import WebSocketTransport, serve_websocket
+from ._version import IMPL_VERSION, PROTOCOL_VERSION, V1_1_FEATURES, intersect_features
 
-__all__ = [
+__all__ = (
+    "ERROR_CODES",
     "IMPL_VERSION",
+    # version
     "PROTOCOL_VERSION",
-    "ARCPClient",
+    "V1_1_FEATURES",
+    # errors
     "ARCPError",
-    "ARCPRuntime",
+    "AgentNotAvailableError",
+    "AgentVersionNotAvailableError",
+    "BudgetExhaustedError",
+    "CancelledError",
+    # messages (commonly-used)
+    "Capabilities",
+    "ClientInfo",
+    "DuplicateKeyError",
+    # envelope
     "Envelope",
-    "ErrorCode",
-    "new_message_id",
-]
+    "HeartbeatLostError",
+    "InternalError",
+    "InvalidRequestError",
+    "JobNotFoundError",
+    "Lease",
+    "LeaseConstraints",
+    "LeaseExpiredError",
+    "LeaseSubsetViolationError",
+    "ListJobsFilter",
+    "MemoryTransport",
+    "PermissionDeniedError",
+    "ResumeWindowExpiredError",
+    "RuntimeInfo",
+    "SessionResume",
+    "SessionWelcomePayload",
+    "StdioTransport",
+    "TimeoutError",
+    # transports
+    "Transport",
+    "TransportClosed",
+    "UnauthenticatedError",
+    "WebSocketTransport",
+    "error_class_for",
+    "error_from_payload",
+    "intersect_features",
+    "pair_memory_transports",
+    "parse_agent_ref",
+    "parse_budget_amount",
+    "serve_websocket",
+)

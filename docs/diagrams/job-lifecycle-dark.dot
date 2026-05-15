@@ -1,0 +1,69 @@
+digraph JobLifecycle {
+  rankdir=TB;
+  bgcolor="transparent";
+  compound=false;
+  fontname="Helvetica";
+  splines=spline;
+  nodesep=0.32;
+  ranksep=0.55;
+  pad="0.35,0.25";
+
+  node [
+    shape=box,
+    style="rounded,filled",
+    fillcolor="#334155",
+    color="#475569",
+    fontname="Helvetica",
+    fontsize=11,
+    fontcolor="#F1F5F9",
+    margin="0.22,0.11",
+    penwidth=1.0
+  ];
+
+  edge [
+    fontname="Helvetica",
+    fontsize=9,
+    fontcolor="#94A3B8",
+    color="#64748B",
+    penwidth=1.1,
+    arrowsize=0.75,
+    arrowhead=vee
+  ];
+
+  Submit [
+    label=<<FONT POINT-SIZE="12"><B>Submit</B></FONT>>,
+    fillcolor="#3B82F6", color="#2563EB",
+    fontcolor="white", penwidth=1.4
+  ];
+
+  pending [label="pending"];
+
+  running [
+    label=<<FONT POINT-SIZE="12"><B>running</B></FONT>>,
+    fillcolor="#F59E0B", color="#D97706",
+    fontcolor="white", penwidth=1.4
+  ];
+
+  success    [label="success"];
+  error      [label="error"];
+  cancelled  [label="cancelled"];
+  timed_out  [label="timed_out"];
+
+  edge [color="#94A3B8", penwidth=1.2];
+  Submit  -> pending  [label="job.submit"];
+  pending -> running  [label="job.accepted"];
+  running -> success  [label="job.result{success}"];
+  running -> cancelled [label="job.cancel"];
+
+  edge [color="#475569", penwidth=1.0];
+  running -> timed_out [label="max_runtime_sec elapsed"];
+  running -> error     [label="job.error{error}"];
+  running -> error     [label="BUDGET_EXHAUSTED §9.6"];
+  running -> error     [label="LEASE_EXPIRED §9.5"];
+
+  running -> running [
+    style=dashed, color="#F472B6", penwidth=1.1,
+    constraint=false,
+    label=<<FONT COLOR="#F472B6">subscribe / progress / chunk</FONT>>, fontsize=9
+  ];
+}

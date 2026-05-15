@@ -1,0 +1,67 @@
+digraph ResultChunkProgress {
+  rankdir=LR;
+  bgcolor="transparent";
+  compound=false;
+  fontname="Helvetica";
+  splines=spline;
+  nodesep=0.32;
+  ranksep=0.55;
+  pad="0.35,0.25";
+
+  node [
+    shape=box,
+    style="rounded,filled",
+    fillcolor="#334155",
+    color="#475569",
+    fontname="Helvetica",
+    fontsize=11,
+    fontcolor="#F1F5F9",
+    margin="0.22,0.11",
+    penwidth=1.0
+  ];
+
+  edge [
+    fontname="Helvetica",
+    fontsize=9,
+    fontcolor="#94A3B8",
+    color="#64748B",
+    penwidth=1.1,
+    arrowsize=0.75,
+    arrowhead=vee
+  ];
+
+  Agent [
+    label=<<FONT POINT-SIZE="12"><B>Agent</B></FONT>>,
+    fillcolor="#3B82F6", color="#2563EB",
+    fontcolor="white", penwidth=1.4
+  ];
+
+  Runtime [
+    label=<<FONT POINT-SIZE="12"><B>Runtime</B></FONT>>,
+    fillcolor="#F59E0B", color="#D97706",
+    fontcolor="white", penwidth=1.4
+  ];
+
+  Client [label="Client"];
+
+  tool_call_pair [label=<tool_call &#8594; tool_result<BR/>event_seq N, N+1>];
+  progress_event [label=<progress<BR/>{current, total, units}<BR/>event_seq N+2>];
+  chunk_0_29     [label=<result_chunk &#215; 30<BR/>{result_id, chunk_seq, data, more: true}>];
+  chunk_final    [label=<result_chunk<BR/>{more: false}>];
+  job_result     [label=<job.result<BR/>{final_status: success,<BR/>result_id, result_size}>];
+
+  edge [color="#94A3B8", penwidth=1.2];
+  Agent -> tool_call_pair; tool_call_pair -> Runtime; Runtime -> Client;
+  Agent -> progress_event; progress_event -> Runtime;
+  Agent -> chunk_0_29;     chunk_0_29     -> Runtime;
+  Agent -> chunk_final;    chunk_final    -> Runtime;
+  Agent -> job_result;     job_result     -> Runtime;
+
+  { rank=same; tool_call_pair; progress_event; chunk_0_29; chunk_final; job_result; }
+
+  Client -> Runtime [
+    style=dashed, color="#F472B6", penwidth=1.1,
+    constraint=false,
+    label=<<FONT COLOR="#F472B6">assemble bytes by result_id<BR/>until more=false</FONT>>, fontsize=9
+  ];
+}

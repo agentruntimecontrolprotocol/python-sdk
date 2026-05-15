@@ -1,0 +1,66 @@
+digraph CapabilityNegotiation {
+  rankdir=LR;
+  bgcolor="transparent";
+  compound=true;
+  fontname="Helvetica";
+  splines=spline;
+  nodesep=0.32;
+  ranksep=0.55;
+  pad="0.35,0.25";
+
+  node [
+    shape=box,
+    style="rounded,filled",
+    fillcolor="white",
+    color="#CBD5E1",
+    fontname="Helvetica",
+    fontsize=11,
+    fontcolor="#1F2937",
+    margin="0.22,0.11",
+    penwidth=1.0
+  ];
+
+  edge [
+    fontname="Helvetica",
+    fontsize=9,
+    fontcolor="#64748B",
+    color="#94A3B8",
+    penwidth=1.1,
+    arrowsize=0.75,
+    arrowhead=vee
+  ];
+
+  Client [
+    label=<<FONT POINT-SIZE="12"><B>Client</B></FONT>>,
+    fillcolor="#3B82F6", color="#2563EB",
+    fontcolor="white", penwidth=1.4
+  ];
+
+  Runtime [
+    label=<<FONT POINT-SIZE="12"><B>Runtime</B></FONT>>,
+    fillcolor="#F59E0B", color="#D97706",
+    fontcolor="white", penwidth=1.4
+  ];
+
+  hello_features   [label=<session.hello<BR/>features = [heartbeat, ack, list_jobs, subscribe, ...]>];
+  welcome_features [label=<session.welcome<BR/>features = [heartbeat, ack, agent_versions]>];
+  intersection     [label=<negotiated = {heartbeat, ack}>];
+
+  edge [color="#64748B", penwidth=1.2];
+  Client           -> hello_features;
+  hello_features   -> Runtime;
+  Runtime          -> welcome_features;
+  welcome_features -> Client;
+
+  edge [color="#CBD5E1", penwidth=1.0];
+  hello_features   -> intersection;
+  welcome_features -> intersection;
+
+  { rank=same; hello_features; welcome_features; }
+
+  intersection -> Client [
+    style=dashed, color="#F472B6", penwidth=1.1,
+    constraint=false,
+    label=<<FONT COLOR="#DB2777">client.has_feature("subscribe") &#8594; False</FONT>>, fontsize=9
+  ];
+}

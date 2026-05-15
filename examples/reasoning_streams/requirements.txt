@@ -1,4 +1,0 @@
-arcp>=1.0,<2.0
-langgraph>=0.2
-anthropic>=0.39
-pydantic>=2.7

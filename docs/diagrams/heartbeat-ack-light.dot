@@ -1,0 +1,78 @@
+digraph HeartbeatAck {
+  rankdir=LR;
+  bgcolor="transparent";
+  compound=false;
+  fontname="Helvetica";
+  splines=spline;
+  nodesep=0.32;
+  ranksep=0.55;
+  pad="0.35,0.25";
+
+  node [
+    shape=box,
+    style="rounded,filled",
+    fillcolor="white",
+    color="#CBD5E1",
+    fontname="Helvetica",
+    fontsize=11,
+    fontcolor="#1F2937",
+    margin="0.22,0.11",
+    penwidth=1.0
+  ];
+
+  edge [
+    fontname="Helvetica",
+    fontsize=9,
+    fontcolor="#64748B",
+    color="#94A3B8",
+    penwidth=1.1,
+    arrowsize=0.75,
+    arrowhead=vee
+  ];
+
+  Client [
+    label=<<FONT POINT-SIZE="12"><B>Client</B></FONT>>,
+    fillcolor="#3B82F6", color="#2563EB",
+    fontcolor="white", penwidth=1.4
+  ];
+
+  Runtime [
+    label=<<FONT POINT-SIZE="12"><B>Runtime</B></FONT>>,
+    fillcolor="#F59E0B", color="#D97706",
+    fontcolor="white", penwidth=1.4
+  ];
+
+  idle_30s      [label="30s idle"];
+  ping          [label=<session.ping<BR/>{nonce, sent_at}>];
+  pong          [label=<session.pong<BR/>{ping_nonce, received_at}>];
+  ack           [label=<session.ack<BR/>{last_processed_seq: 1827}>];
+  lag_detected  [label="consumer lag &gt; threshold"];
+  back_pressure [label=<job.event{kind: status,<BR/>body.phase: "back_pressure"}>];
+
+  edge [color="#64748B", penwidth=1.2];
+  Client  -> idle_30s;
+  idle_30s -> ping;
+  ping    -> Runtime;
+  Runtime -> pong;
+  pong    -> Client;
+
+  edge [color="#CBD5E1", penwidth=1.0];
+  Client  -> ack;
+  ack     -> Runtime;
+  Runtime -> lag_detected;
+  lag_detected -> back_pressure;
+  back_pressure -> Client;
+
+  { rank=same; ping; pong; }
+
+  pong -> Runtime [
+    style=dashed, color="#F472B6", penwidth=1.1,
+    constraint=false,
+    label=<<FONT COLOR="#DB2777">not in event_seq</FONT>>, fontsize=9
+  ];
+  ack -> Runtime [
+    style=dashed, color="#F472B6", penwidth=1.1,
+    constraint=false,
+    label=<<FONT COLOR="#DB2777">not in event_seq</FONT>>, fontsize=9
+  ];
+}

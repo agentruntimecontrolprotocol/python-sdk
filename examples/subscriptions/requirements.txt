@@ -1,5 +1,0 @@
-arcp>=1.0,<2.0
-structlog>=24
-aiosqlite>=0.20
-opentelemetry-sdk>=1.27
-opentelemetry-exporter-otlp>=1.27
