@@ -38,10 +38,8 @@ from .handles import JobHandle, JobSubscription
 
 _LOG = get_logger("arcp.client")
 
-
 def _now_iso() -> str:
     return datetime.now(UTC).isoformat().replace("+00:00", "Z")
-
 
 @dataclass(frozen=True)
 class AutoAckOptions:
@@ -49,7 +47,6 @@ class AutoAckOptions:
 
     every_n: int = 100
     interval_sec: float = 1.0
-
 
 class ARCPClient:
     """ARCP client: open/resume a session, submit jobs, observe events."""
@@ -96,7 +93,6 @@ class ARCPClient:
         self._closed = False
         self._dispatch_cache: dict[str, Callable[[Envelope], Awaitable[None]]] | None = None
 
-    # ------------------------------------------------------------ properties
     @property
     def negotiated_features(self) -> tuple[str, ...]:
         return self._negotiated
@@ -111,8 +107,6 @@ class ARCPClient:
     @property
     def welcome(self) -> SessionWelcomePayload | None:
         return self._welcome
-
-    # --------------------------------------------------------------- connect
 
     async def connect(self, transport: Transport) -> SessionWelcomePayload:
         """Send `session.hello`, await `session.welcome`, start the read pump."""
@@ -155,8 +149,6 @@ class ARCPClient:
             self._auto_ack_task = asyncio.create_task(self._auto_ack_loop())
         return welcome
 
-    # ------------------------------------------------------------ read pump
-
     async def _read_pump(self) -> None:
         assert self._transport is not None
         try:
@@ -194,8 +186,6 @@ class ARCPClient:
         self._pending_accepts.clear()
         self._pending.cancel_all(exc)
 
-    # ----------------------------------------------------------- auto-ack
-
     async def _auto_ack_loop(self) -> None:
         assert self.auto_ack is not None
         last_acked = 0
@@ -207,8 +197,6 @@ class ARCPClient:
                     last_acked = self._highest_seq
         except asyncio.CancelledError:
             return
-
-    # ----------------------------------------------------------- ops
 
     async def submit(  # noqa: PLR0913
         self,
@@ -280,8 +268,6 @@ class ARCPClient:
     def latest_event_seq(self) -> int:
         return self._highest_seq
 
-    # ------------------------------------------------------------ shutdown
-
     async def close(self, *, reason: str = "client.close") -> None:
         from .ops import close_session
 
@@ -289,6 +275,5 @@ class ARCPClient:
 
     async def aclose(self) -> None:
         await self.close()
-
 
 __all__ = ("ARCPClient", "AutoAckOptions")

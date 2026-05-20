@@ -41,13 +41,10 @@ from .session import (
 
 _LOG = get_logger("arcp.runtime.server")
 
-
 def _now_iso() -> str:
     return datetime.now(UTC).isoformat().replace("+00:00", "Z")
 
-
 JobAuthorizationPolicy = Callable[["AuthorizationContext"], bool]
-
 
 @dataclass(frozen=True)
 class AuthorizationContext:
@@ -57,11 +54,9 @@ class AuthorizationContext:
     job: Job
     operation: str  # "list" | "subscribe" | "cancel"
 
-
 def _default_authz_policy(ctx: AuthorizationContext) -> bool:
     """Same-principal default: requester must own the job (§14)."""
     return ctx.job.submitter_principal == ctx.requester_principal
-
 
 @dataclass
 class _AgentRegistration:
@@ -69,7 +64,6 @@ class _AgentRegistration:
     versions: dict[str, Agent] = field(default_factory=dict)
     default_version: str | None = None
     bare: Agent | None = None  # registered without a version
-
 
 class ARCPRuntime:
     """Server-side runtime: register agents, accept transports, dispatch envelopes."""
@@ -112,8 +106,6 @@ class ARCPRuntime:
         self._job_tasks: dict[str, asyncio.Task[Any]] = {}
         self._closed = asyncio.Event()
         self._semaphore = asyncio.Semaphore(max_concurrent_jobs)
-
-    # ------------------------------------------------------------------ agents
 
     def register_agent(self, name: str, fn: Agent) -> Self:
         reg = self._agents.setdefault(name, _AgentRegistration(name=name))
@@ -164,8 +156,6 @@ class ARCPRuntime:
             raise AgentVersionNotAvailableError(f"unknown agent version: {name}@{version}")
         return reg.versions[version], name, version
 
-    # ------------------------------------------------------------- accept loop
-
     async def accept(self, transport: Transport) -> None:
         """Drive one full session over `transport`. Returns when session ends."""
         from ._accept import run_session
@@ -198,8 +188,6 @@ class ARCPRuntime:
         if not ctx.has_feature(name):
             raise InvalidRequestError(f"feature {name!r} not negotiated for this session")
 
-    # -------------------------------------------------------------- handlers
-
     async def _run_job(
         self,
         job: Job,
@@ -212,8 +200,6 @@ class ARCPRuntime:
 
         await run_job(self, job, agent_fn, agent_input, max_runtime_sec=max_runtime_sec)
 
-    # ------------------------------------------------------------ shutdown
-
     async def close(self) -> None:
         self._closed.set()
         for task in list(self._job_tasks.values()):
@@ -223,7 +209,6 @@ class ARCPRuntime:
             with contextlib.suppress(asyncio.CancelledError, Exception):
                 await task
         await self.event_log.close()
-
 
 from . import _handlers  # noqa: E402
 
@@ -239,7 +224,6 @@ _DISPATCH_TABLE: dict[
     "job.subscribe": ("subscribe", _handlers.handle_subscribe),
     "job.unsubscribe": ("subscribe", _handlers.handle_unsubscribe),
 }
-
 
 __all__ = (
     "ARCPRuntime",
