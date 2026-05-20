@@ -20,4 +20,4 @@ uv run python -m examples.resume.client
 ## See also
 
 - Reference: [`../05-reference/arcp-client.md`](../05-reference/arcp-client.md).
-- Spec: [`../../../spec/docs/draft-arcp-02.1.md`](../../../spec/docs/draft-arcp-02.1.md) §6.3.
+- Spec: [`../../../spec/docs/draft-arcp-1.1.md`](../../../spec/docs/draft-arcp-1.1.md) §6.3.

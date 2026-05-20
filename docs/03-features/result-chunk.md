@@ -74,4 +74,4 @@ async for chunk in handle.chunks():
 ## See also
 
 - Example: [`../04-examples/result-chunk.md`](../04-examples/result-chunk.md).
-- Spec: [`../../../spec/docs/draft-arcp-02.1.md`](../../../spec/docs/draft-arcp-02.1.md) §8.4.
+- Spec: [`../../../spec/docs/draft-arcp-1.1.md`](../../../spec/docs/draft-arcp-1.1.md) §8.4.

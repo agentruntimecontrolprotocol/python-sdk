@@ -89,4 +89,4 @@ run.
 ## See also
 
 - Example: [`../04-examples/stdio.md`](../04-examples/stdio.md).
-- Spec: [`../../../spec/docs/draft-arcp-02.1.md`](../../../spec/docs/draft-arcp-02.1.md) §4.
+- Spec: [`../../../spec/docs/draft-arcp-1.1.md`](../../../spec/docs/draft-arcp-1.1.md) §4.

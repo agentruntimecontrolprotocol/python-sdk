@@ -21,4 +21,4 @@ pipes.
 ## See also
 
 - Reference: [`../05-reference/transport.md`](../05-reference/transport.md).
-- Spec: [`../../../spec/docs/draft-arcp-02.1.md`](../../../spec/docs/draft-arcp-02.1.md) §4.2.
+- Spec: [`../../../spec/docs/draft-arcp-1.1.md`](../../../spec/docs/draft-arcp-1.1.md) §4.2.

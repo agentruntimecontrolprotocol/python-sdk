@@ -20,4 +20,4 @@ uv run python -m examples.delegate.client
 ## See also
 
 - Concepts: [`../02-concepts.md`](../02-concepts.md) — Delegation.
-- Spec: [`../../../spec/docs/draft-arcp-02.1.md`](../../../spec/docs/draft-arcp-02.1.md) §10.
+- Spec: [`../../../spec/docs/draft-arcp-1.1.md`](../../../spec/docs/draft-arcp-1.1.md) §10.

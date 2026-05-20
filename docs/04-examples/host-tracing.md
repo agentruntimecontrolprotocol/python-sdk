@@ -21,4 +21,4 @@ uv run python -m examples.host_tracing.client
 ## See also
 
 - Reference: [`../05-reference/middleware-otel.md`](../05-reference/middleware-otel.md).
-- Spec: [`../../../spec/docs/draft-arcp-02.1.md`](../../../spec/docs/draft-arcp-02.1.md) §11.
+- Spec: [`../../../spec/docs/draft-arcp-1.1.md`](../../../spec/docs/draft-arcp-1.1.md) §11.

@@ -61,4 +61,4 @@ subscriber link plumbing in `arcp/_runtime/session.py:L24`.
 ## See also
 
 - Example: [`../04-examples/subscribe.md`](../04-examples/subscribe.md).
-- Spec: [`../../../spec/docs/draft-arcp-02.1.md`](../../../spec/docs/draft-arcp-02.1.md) §7.6.
+- Spec: [`../../../spec/docs/draft-arcp-1.1.md`](../../../spec/docs/draft-arcp-1.1.md) §7.6.

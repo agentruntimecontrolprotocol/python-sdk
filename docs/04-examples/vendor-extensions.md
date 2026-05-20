@@ -18,4 +18,4 @@ uv run python -m examples.vendor_extensions.client
 
 ## See also
 
-- Spec: [`../../../spec/docs/draft-arcp-02.1.md`](../../../spec/docs/draft-arcp-02.1.md) §5.3.
+- Spec: [`../../../spec/docs/draft-arcp-1.1.md`](../../../spec/docs/draft-arcp-1.1.md) §5.3.

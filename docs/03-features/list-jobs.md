@@ -63,4 +63,4 @@ runtime handler at `arcp/_runtime/server.py:L426`.
 ## See also
 
 - Example: [`../04-examples/list-jobs.md`](../04-examples/list-jobs.md).
-- Spec: [`../../../spec/docs/draft-arcp-02.1.md`](../../../spec/docs/draft-arcp-02.1.md) §6.6.
+- Spec: [`../../../spec/docs/draft-arcp-1.1.md`](../../../spec/docs/draft-arcp-1.1.md) §6.6.

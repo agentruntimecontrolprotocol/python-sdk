@@ -67,4 +67,4 @@ the welcome handshake.
 ## See also
 
 - Example: [`../04-examples/heartbeat.md`](../04-examples/heartbeat.md).
-- Spec: [`../../../spec/docs/draft-arcp-02.1.md`](../../../spec/docs/draft-arcp-02.1.md) §6.4.
+- Spec: [`../../../spec/docs/draft-arcp-1.1.md`](../../../spec/docs/draft-arcp-1.1.md) §6.4.

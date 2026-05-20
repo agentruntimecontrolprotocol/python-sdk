@@ -66,4 +66,4 @@ check in `Job.apply_cost_metric` at `arcp/_runtime/job.py:L68`;
 ## See also
 
 - Example: [`../04-examples/cost-budget.md`](../04-examples/cost-budget.md).
-- Spec: [`../../../spec/docs/draft-arcp-02.1.md`](../../../spec/docs/draft-arcp-02.1.md) §9.6.
+- Spec: [`../../../spec/docs/draft-arcp-1.1.md`](../../../spec/docs/draft-arcp-1.1.md) §9.6.

@@ -91,4 +91,4 @@ inline `result`.
 
 - Feature: [`../03-features/progress.md`](../03-features/progress.md).
 - Feature: [`../03-features/result-chunk.md`](../03-features/result-chunk.md).
-- Spec: [`../../../spec/docs/draft-arcp-02.1.md`](../../../spec/docs/draft-arcp-02.1.md) §§8–9.
+- Spec: [`../../../spec/docs/draft-arcp-1.1.md`](../../../spec/docs/draft-arcp-1.1.md) §§8–9.

@@ -58,4 +58,4 @@ Implementation: `JobContext.progress` at `arcp/_runtime/job.py:L227`.
 ## See also
 
 - Example: [`../04-examples/progress.md`](../04-examples/progress.md).
-- Spec: [`../../../spec/docs/draft-arcp-02.1.md`](../../../spec/docs/draft-arcp-02.1.md) §8.2.
+- Spec: [`../../../spec/docs/draft-arcp-1.1.md`](../../../spec/docs/draft-arcp-1.1.md) §8.2.

@@ -147,4 +147,4 @@ streaming surface as a locally-submitted job.
 - Feature: [`../03-features/capability-negotiation.md`](../03-features/capability-negotiation.md).
 - Feature: [`../03-features/event-ack.md`](../03-features/event-ack.md).
 - Feature: [`../03-features/subscribe.md`](../03-features/subscribe.md).
-- Spec: [`../../../spec/docs/draft-arcp-02.1.md`](../../../spec/docs/draft-arcp-02.1.md) §§6–8.
+- Spec: [`../../../spec/docs/draft-arcp-1.1.md`](../../../spec/docs/draft-arcp-1.1.md) §§6–8.

@@ -64,4 +64,4 @@ Validator: `validate_lease_constraints` at
 ## See also
 
 - Example: [`../04-examples/lease-expires-at.md`](../04-examples/lease-expires-at.md).
-- Spec: [`../../../spec/docs/draft-arcp-02.1.md`](../../../spec/docs/draft-arcp-02.1.md) §9.5.
+- Spec: [`../../../spec/docs/draft-arcp-1.1.md`](../../../spec/docs/draft-arcp-1.1.md) §9.5.

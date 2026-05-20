@@ -19,4 +19,4 @@ uv run python -m examples.idempotent_retry.client
 
 ## See also
 
-- Spec: [`../../../spec/docs/draft-arcp-02.1.md`](../../../spec/docs/draft-arcp-02.1.md) §7.4.
+- Spec: [`../../../spec/docs/draft-arcp-1.1.md`](../../../spec/docs/draft-arcp-1.1.md) §7.4.

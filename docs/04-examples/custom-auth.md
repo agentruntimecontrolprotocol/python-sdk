@@ -20,4 +20,4 @@ uv run python -m examples.custom_auth.client
 ## See also
 
 - Reference: [`../05-reference/arcp-runtime.md`](../05-reference/arcp-runtime.md).
-- Spec: [`../../../spec/docs/draft-arcp-02.1.md`](../../../spec/docs/draft-arcp-02.1.md) §6.1.
+- Spec: [`../../../spec/docs/draft-arcp-1.1.md`](../../../spec/docs/draft-arcp-1.1.md) §6.1.

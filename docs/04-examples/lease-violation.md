@@ -19,5 +19,5 @@ uv run python -m examples.lease_violation.client
 
 ## See also
 
-- Spec: [`../../../spec/docs/draft-arcp-02.1.md`](../../../spec/docs/draft-arcp-02.1.md) §9.1.
+- Spec: [`../../../spec/docs/draft-arcp-1.1.md`](../../../spec/docs/draft-arcp-1.1.md) §9.1.
 - Errors: [`../05-reference/errors.md`](../05-reference/errors.md).

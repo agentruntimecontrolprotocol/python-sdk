@@ -101,4 +101,4 @@ trace stays connected end-to-end.
 
 - Features: [`03-features/`](03-features/).
 - Public API per module: [`05-reference/`](05-reference/).
-- Spec: [`../../spec/docs/draft-arcp-02.1.md`](../../spec/docs/draft-arcp-02.1.md).
+- Spec: [`../../spec/docs/draft-arcp-1.1.md`](../../spec/docs/draft-arcp-1.1.md).

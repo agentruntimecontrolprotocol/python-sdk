@@ -57,4 +57,4 @@ malformed `last_processed_seq` (negative or non-integer).
 ## See also
 
 - Example: [`../04-examples/ack-backpressure.md`](../04-examples/ack-backpressure.md).
-- Spec: [`../../../spec/docs/draft-arcp-02.1.md`](../../../spec/docs/draft-arcp-02.1.md) §6.5.
+- Spec: [`../../../spec/docs/draft-arcp-1.1.md`](../../../spec/docs/draft-arcp-1.1.md) §6.5.

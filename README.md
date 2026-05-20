@@ -2,10 +2,10 @@
 
 [![License: Apache-2.0](https://img.shields.io/badge/license-Apache--2.0-blue)](LICENSE)
 [![Python ≥ 3.11](https://img.shields.io/badge/python-%E2%89%A53.11-blue)](pyproject.toml)
-[![ARCP v1.1](https://img.shields.io/badge/arcp-v1.1-blue)](../spec/docs/draft-arcp-02.1.md)
+[![ARCP v1.1](https://img.shields.io/badge/arcp-v1.1-blue)](../spec/docs/draft-arcp-1.1.md)
 
 Reference implementation of ARCP v1.1 for Python. The wire is defined
-in [`../spec/docs/draft-arcp-02.1.md`](../spec/docs/draft-arcp-02.1.md);
+in [`../spec/docs/draft-arcp-1.1.md`](../spec/docs/draft-arcp-1.1.md);
 this SDK is one of eleven implementations tracked in the workspace's
 per-SDK conformance pages.
 

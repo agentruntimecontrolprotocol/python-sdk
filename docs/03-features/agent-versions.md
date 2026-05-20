@@ -60,4 +60,4 @@ Resolution: `ARCPRuntime._resolve_agent` at
 ## See also
 
 - Example: [`../04-examples/agent-versions.md`](../04-examples/agent-versions.md).
-- Spec: [`../../../spec/docs/draft-arcp-02.1.md`](../../../spec/docs/draft-arcp-02.1.md) §7.5.
+- Spec: [`../../../spec/docs/draft-arcp-1.1.md`](../../../spec/docs/draft-arcp-1.1.md) §7.5.

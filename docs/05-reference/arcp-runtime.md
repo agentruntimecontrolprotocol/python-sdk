@@ -74,4 +74,4 @@ transport is closed.
 
 - Reference: [`job-context.md`](job-context.md), [`transport.md`](transport.md), [`errors.md`](errors.md).
 - Features: [`../03-features/heartbeats.md`](../03-features/heartbeats.md), [`../03-features/agent-versions.md`](../03-features/agent-versions.md).
-- Spec: [`../../../spec/docs/draft-arcp-02.1.md`](../../../spec/docs/draft-arcp-02.1.md) §§6–10.
+- Spec: [`../../../spec/docs/draft-arcp-1.1.md`](../../../spec/docs/draft-arcp-1.1.md) §§6–10.

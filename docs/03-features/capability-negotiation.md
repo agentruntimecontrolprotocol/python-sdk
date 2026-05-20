@@ -74,4 +74,4 @@ turns missing-feature submissions into `INVALID_REQUEST`
 
 - All sibling pages in [`03-features/`](.) describe the individual
   flags negotiated through this mechanism.
-- Spec: [`../../../spec/docs/draft-arcp-02.1.md`](../../../spec/docs/draft-arcp-02.1.md) §6.2.
+- Spec: [`../../../spec/docs/draft-arcp-1.1.md`](../../../spec/docs/draft-arcp-1.1.md) §6.2.

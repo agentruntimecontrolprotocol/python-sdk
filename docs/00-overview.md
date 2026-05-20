@@ -25,7 +25,7 @@ ARCP v1.1. It ships:
 
 The wire is normative; this implementation tracks the published
 protocol spec at
-[`../../spec/docs/draft-arcp-02.1.md`](../../spec/docs/draft-arcp-02.1.md).
+[`../../spec/docs/draft-arcp-1.1.md`](../../spec/docs/draft-arcp-1.1.md).
 The conformance matrix in [`06-conformance.md`](06-conformance.md)
 maps every spec section to a source citation.
 
@@ -44,5 +44,5 @@ maps every spec section to a source citation.
 
 - TypeScript reference SDK:
   [`../../typescript-sdk/README.md`](../../typescript-sdk/README.md).
-- Spec: [`../../spec/docs/draft-arcp-02.1.md`](../../spec/docs/draft-arcp-02.1.md).
+- Spec: [`../../spec/docs/draft-arcp-1.1.md`](../../spec/docs/draft-arcp-1.1.md).
 - Examples: [`../examples/`](../examples/).

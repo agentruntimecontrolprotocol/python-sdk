@@ -47,4 +47,4 @@ unchanged.
 ## See also
 
 - Example: [`../04-examples/host-tracing.md`](../04-examples/host-tracing.md).
-- Spec: [`../../../spec/docs/draft-arcp-02.1.md`](../../../spec/docs/draft-arcp-02.1.md) §11.
+- Spec: [`../../../spec/docs/draft-arcp-1.1.md`](../../../spec/docs/draft-arcp-1.1.md) §11.

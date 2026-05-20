@@ -81,4 +81,4 @@ payloads into raise-shaped values.
 ## See also
 
 - Concepts: [`../02-concepts.md`](../02-concepts.md).
-- Spec: [`../../../spec/docs/draft-arcp-02.1.md`](../../../spec/docs/draft-arcp-02.1.md) §12.
+- Spec: [`../../../spec/docs/draft-arcp-1.1.md`](../../../spec/docs/draft-arcp-1.1.md) §12.
