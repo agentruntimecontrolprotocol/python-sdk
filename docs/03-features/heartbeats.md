@@ -23,7 +23,7 @@ are sent, and idle sessions stay open.
 
 ```json
 {
-  "arcp": "1",
+  "arcp": "1.1",
   "id": "01J9SHZ...",
   "type": "session.ping",
   "session_id": "sess_01J9SHX...",
@@ -33,7 +33,7 @@ are sent, and idle sessions stay open.
 
 ```json
 {
-  "arcp": "1",
+  "arcp": "1.1",
   "id": "01J9SHZ...",
   "type": "session.pong",
   "session_id": "sess_01J9SHX...",

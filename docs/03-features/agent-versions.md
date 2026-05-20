@@ -22,7 +22,7 @@ default version set via `set_default_agent_version`. Mismatch is a
 
 ```json
 {
-  "arcp": "1",
+  "arcp": "1.1",
   "id": "01J9SJ3...",
   "type": "job.submit",
   "session_id": "sess_01J9SHX...",

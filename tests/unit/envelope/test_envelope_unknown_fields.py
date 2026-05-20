@@ -8,7 +8,7 @@ from arcp._ulid import new_ulid
 
 def test_unknown_field_passes_through() -> None:
     raw = {
-        "arcp": "1",
+        "arcp": "1.1",
         "id": new_ulid(),
         "type": "session.ping",
         "payload": {"nonce": "abc", "sent_at": "2026-05-14T12:00:00Z"},
@@ -23,7 +23,7 @@ def test_unknown_field_passes_through() -> None:
 
 def test_roundtrip_preserves_unknown_field() -> None:
     raw = {
-        "arcp": "1",
+        "arcp": "1.1",
         "id": new_ulid(),
         "type": "session.ping",
         "payload": {},

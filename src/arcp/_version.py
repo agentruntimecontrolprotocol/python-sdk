@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-PROTOCOL_VERSION: str = "1"
+PROTOCOL_VERSION: str = "1.1"
 IMPL_VERSION: str = "1.1.0"
 
 V1_1_FEATURES: tuple[str, ...] = (

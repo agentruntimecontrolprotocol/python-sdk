@@ -22,7 +22,7 @@ v1.0 fallback: clients track their own `submit`/event history.
 
 ```json
 {
-  "arcp": "1",
+  "arcp": "1.1",
   "id": "01J9SJ1...",
   "type": "session.list_jobs",
   "session_id": "sess_01J9SHX...",

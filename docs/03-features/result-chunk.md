@@ -23,7 +23,7 @@ chunked is `INVALID_REQUEST`. Per-chunk size is capped per spec §14.
 
 ```json
 {
-  "arcp": "1",
+  "arcp": "1.1",
   "id": "01J9SJ7...",
   "type": "job.event",
   "session_id": "sess_01J9SHX...",

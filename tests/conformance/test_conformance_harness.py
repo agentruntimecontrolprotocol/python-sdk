@@ -82,10 +82,10 @@ def test_public_symbols_exist(module: str, symbols: list[str]) -> None:
         assert hasattr(mod, sym), f"{module} missing symbol: {sym}"
 
 
-def test_protocol_version_is_1() -> None:
+def test_protocol_version_is_1_1() -> None:
     import arcp
 
-    assert arcp.PROTOCOL_VERSION == "1"
+    assert arcp.PROTOCOL_VERSION == "1.1"
 
 
 def test_v1_1_features_complete() -> None:

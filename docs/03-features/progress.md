@@ -22,7 +22,7 @@ streams).
 
 ```json
 {
-  "arcp": "1",
+  "arcp": "1.1",
   "id": "01J9SJ6...",
   "type": "job.event",
   "session_id": "sess_01J9SHX...",

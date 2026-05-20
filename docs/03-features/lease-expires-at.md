@@ -23,7 +23,7 @@ with `job.error` carrying the same code.
 
 ```json
 {
-  "arcp": "1",
+  "arcp": "1.1",
   "id": "01J9SJ4...",
   "type": "job.submit",
   "session_id": "sess_01J9SHX...",

@@ -23,7 +23,7 @@ the runtime never pauses.
 
 ```json
 {
-  "arcp": "1",
+  "arcp": "1.1",
   "id": "01J9SJ0...",
   "type": "session.ack",
   "session_id": "sess_01J9SHX...",

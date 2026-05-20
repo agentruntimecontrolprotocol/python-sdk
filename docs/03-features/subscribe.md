@@ -25,7 +25,7 @@ flow.
 
 ```json
 {
-  "arcp": "1",
+  "arcp": "1.1",
   "id": "01J9SJ2...",
   "type": "job.subscribe",
   "session_id": "sess_01J9SHX...",

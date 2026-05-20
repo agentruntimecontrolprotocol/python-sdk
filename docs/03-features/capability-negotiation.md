@@ -28,7 +28,7 @@ flag vocabulary is the V1.1 set: `heartbeat`, `ack`, `list_jobs`,
 
 ```json
 {
-  "arcp": "1",
+  "arcp": "1.1",
   "id": "01J9SHY...",
   "type": "session.hello",
   "payload": {
