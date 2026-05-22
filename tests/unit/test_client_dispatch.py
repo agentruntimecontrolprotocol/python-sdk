@@ -2,12 +2,9 @@
 
 from __future__ import annotations
 
-import asyncio
 from collections import deque
 from datetime import UTC, datetime
-from unittest.mock import AsyncMock, MagicMock, call
-
-import pytest
+from unittest.mock import AsyncMock, MagicMock
 
 from arcp._client.dispatch import (
     _on_job_event,
@@ -19,11 +16,10 @@ from arcp._client.dispatch import (
 )
 from arcp._client.handles import JobHandle
 from arcp._envelope import Envelope
-from arcp._errors import InternalError, InvalidRequestError
+from arcp._errors import InternalError
 from arcp._messages.execution import JobAcceptedPayload, JobErrorPayload, JobResultPayload
 from arcp._messages.session import SessionPingPayload
 from arcp._ulid import new_envelope_id, new_ulid
-
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -191,7 +187,11 @@ async def test_on_job_event_non_chunk_calls_push_event() -> None:
         type="job.event",
         session_id="test-session",
         job_id="job-2",
-        payload={"kind": "log", "body": {"level": "info", "message": "hi"}, "ts": "2024-01-01T00:00:00Z"},
+        payload={
+            "kind": "log",
+            "body": {"level": "info", "message": "hi"},
+            "ts": "2024-01-01T00:00:00Z",
+        },
     )
     await _on_job_event(client, env)
 
@@ -249,7 +249,6 @@ async def test_on_job_terminal_result_resolves_handle() -> None:
     client = _make_client(handles=handles)
 
     result_payload = JobResultPayload(
-        job_id="job-ok",
         final_status="success",
         completed_at=datetime.now(UTC).isoformat().replace("+00:00", "Z"),
     )
@@ -274,7 +273,6 @@ async def test_on_job_terminal_error_rejects_handle() -> None:
     client = _make_client(handles=handles)
 
     error_payload = JobErrorPayload(
-        job_id="job-err",
         code="INTERNAL_ERROR",
         message="agent crashed",
         retryable=False,

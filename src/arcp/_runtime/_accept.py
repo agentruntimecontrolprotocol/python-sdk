@@ -89,7 +89,7 @@ async def _read_pump(runtime: ARCPRuntime, ctx: SessionContext) -> None:
                 continue
             await _dispatch_one(runtime, ctx, env)
     except TransportClosed:
-        return
+        raise
 
 
 async def _dispatch_one(runtime: ARCPRuntime, ctx: SessionContext, env: Envelope) -> None:

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 from decimal import Decimal
+from typing import Any, cast
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
@@ -11,7 +12,6 @@ import pytest
 from arcp._errors import InternalError, InvalidRequestError
 from arcp._messages.execution import JobErrorPayload, JobResultPayload, LeaseConstraints
 from arcp._runtime.job import Job, JobContext
-
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -57,6 +57,10 @@ def _make_ctx(job: Job | None = None, runtime: MagicMock | None = None) -> JobCo
         signal=asyncio.Event(),
         logger=MagicMock(),
     )
+
+
+def _send_mock(job: Job) -> Any:
+    return cast(Any, job.session.send)
 
 
 # ---------------------------------------------------------------------------
@@ -136,14 +140,12 @@ async def test_job_emit_result_sets_success_state() -> None:
     payload = JobResultPayload(final_status="success", completed_at="2024-01-01T00:00:00Z")
     await job.emit_result(payload)
     assert job.state == "success"
-    job.session.send.assert_awaited_once()
+    _send_mock(job).assert_awaited_once()
 
 
 async def test_job_emit_result_non_success_sets_state() -> None:
     job = _make_job()
-    payload = JobResultPayload(
-        final_status="cancelled", completed_at="2024-01-01T00:00:00Z"
-    )
+    payload = JobResultPayload(final_status="cancelled", completed_at="2024-01-01T00:00:00Z")
     await job.emit_result(payload)
     assert job.state == "cancelled"
 
@@ -183,7 +185,7 @@ async def test_job_emit_error_sets_error_state() -> None:
     )
     await job.emit_error(payload)
     assert job.state == "error"
-    job.session.send.assert_awaited_once()
+    _send_mock(job).assert_awaited_once()
 
 
 # ---------------------------------------------------------------------------
@@ -242,50 +244,50 @@ async def test_ctx_trace_id_none() -> None:
 async def test_ctx_log_sends_event() -> None:
     ctx = _make_ctx()
     await ctx.log("info", "hello world")
-    ctx.job.session.send.assert_awaited_once()
+    _send_mock(ctx.job).assert_awaited_once()
 
 
 async def test_ctx_log_with_attributes() -> None:
     ctx = _make_ctx()
     await ctx.log("debug", "msg", attributes={"k": "v"})
-    ctx.job.session.send.assert_awaited_once()
+    _send_mock(ctx.job).assert_awaited_once()
 
 
 async def test_ctx_thought_sends_event() -> None:
     ctx = _make_ctx()
     await ctx.thought("thinking...")
-    ctx.job.session.send.assert_awaited_once()
+    _send_mock(ctx.job).assert_awaited_once()
 
 
 async def test_ctx_status_with_message() -> None:
     ctx = _make_ctx()
     await ctx.status("processing", "step 1")
-    ctx.job.session.send.assert_awaited_once()
+    _send_mock(ctx.job).assert_awaited_once()
 
 
 async def test_ctx_status_without_message() -> None:
     ctx = _make_ctx()
     await ctx.status("done")
-    ctx.job.session.send.assert_awaited_once()
+    _send_mock(ctx.job).assert_awaited_once()
 
 
 async def test_ctx_progress_minimal() -> None:
     ctx = _make_ctx()
     await ctx.progress(5, total=10, units="items")
-    ctx.job.session.send.assert_awaited_once()
+    _send_mock(ctx.job).assert_awaited_once()
 
 
 async def test_ctx_progress_with_message() -> None:
     ctx = _make_ctx()
     await ctx.progress(3, total=10, message="almost there")
-    ctx.job.session.send.assert_awaited_once()
+    _send_mock(ctx.job).assert_awaited_once()
 
 
 async def test_ctx_metric_non_cost() -> None:
     """Non-cost metric is emitted without budget decrement."""
     ctx = _make_ctx()
     await ctx.metric({"name": "tokens.used", "value": 100})
-    ctx.job.session.send.assert_awaited()
+    _send_mock(ctx.job).assert_awaited()
 
 
 async def test_ctx_metric_cost_decrements_budget_and_emits_remaining() -> None:
@@ -297,7 +299,7 @@ async def test_ctx_metric_cost_decrements_budget_and_emits_remaining() -> None:
     ctx = _make_ctx(job)
     await ctx.metric({"name": "cost.api", "value": 2.0, "unit": "USD"})
     # at least 2 sends: the metric event + the budget.remaining event
-    assert job.session.send.await_count >= 2
+    assert _send_mock(job).await_count >= 2
     assert job.budget["USD"] == Decimal("8")
 
 
@@ -331,7 +333,7 @@ async def test_ctx_result_chunk_valid_sets_started_flag() -> None:
     ctx = _make_ctx()
     await ctx.result_chunk(_chunk_body("hello"))
     assert ctx.job.chunked_result_started is True
-    ctx.job.session.send.assert_awaited_once()
+    _send_mock(ctx.job).assert_awaited_once()
 
 
 # ---------------------------------------------------------------------------

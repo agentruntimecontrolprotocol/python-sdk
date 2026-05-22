@@ -95,7 +95,7 @@ async def test_subscribe_other_principals_job_raises_permission_denied() -> None
         token="other",
         capabilities=Capabilities(features=rt.capabilities.features),
     )
-    welcome_a = await ca.connect(client_a)
+    await ca.connect(client_a)
     welcome_b = await cb.connect(client_b)
 
     handle = await ca.submit(agent="slow")
@@ -215,7 +215,11 @@ async def test_subscribe_with_history_replays_events() -> None:
             "session_id": welcome.session_id,
             "job_id": handle.job_id,
             "event_seq": 1,
-            "payload": {"kind": "log", "ts": "2024-01-01T00:00:00Z", "body": {"level": "info", "message": "hi"}},
+            "payload": {
+                "kind": "log",
+                "ts": "2024-01-01T00:00:00Z",
+                "body": {"level": "info", "message": "hi"},
+            },
             "arcp": "1.1",
         },
     )
@@ -228,9 +232,9 @@ async def test_subscribe_with_history_replays_events() -> None:
         id=new_envelope_id(),
         type="job.subscribe",
         session_id=welcome.session_id,
-        payload=JobSubscribePayload(job_id=handle.job_id, history=True, from_event_seq=0).model_dump(
-            mode="json"
-        ),
+        payload=JobSubscribePayload(
+            job_id=handle.job_id, history=True, from_event_seq=0
+        ).model_dump(mode="json"),
     )
     await handle_subscribe(rt, ctx, env)
 

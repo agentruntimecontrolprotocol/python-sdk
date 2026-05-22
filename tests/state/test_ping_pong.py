@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import asyncio
 import contextlib
-from typing import Any
 
 from arcp import (
     Capabilities,

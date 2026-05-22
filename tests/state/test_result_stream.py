@@ -5,7 +5,6 @@ from __future__ import annotations
 import asyncio
 import base64
 import contextlib
-from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
@@ -16,7 +15,6 @@ from arcp import (
     pair_memory_transports,
 )
 from arcp._errors import InvalidRequestError
-from arcp._messages.execution import Lease
 from arcp._runtime.result_stream import ResultStream
 from arcp.client import ARCPClient
 from arcp.runtime import ARCPRuntime, StaticBearerVerifier
@@ -59,7 +57,7 @@ async def test_result_stream_write_str_utf8() -> None:
     """ResultStream.write with str data sends a result_chunk event."""
     rt = _make_rt()
     server_t, client_t = pair_memory_transports()
-    client, accept_task, job_ctx, handle = await _make_job_context(rt, server_t, client_t)
+    client, accept_task, job_ctx, _handle = await _make_job_context(rt, server_t, client_t)
 
     stream = job_ctx.stream_result()
     await stream.write("hello world")
@@ -67,7 +65,7 @@ async def test_result_stream_write_str_utf8() -> None:
     # Verify chunk_seq incremented and stream is not closed
     assert stream._chunk_seq == 1
     assert not stream._closed
-    assert stream._total_size == len("hello world".encode("utf-8"))
+    assert stream._total_size == len(b"hello world")
 
     await client.close()
     accept_task.cancel()
@@ -80,7 +78,7 @@ async def test_result_stream_write_bytes_base64() -> None:
     """ResultStream.write with bytes data encodes as base64."""
     rt = _make_rt()
     server_t, client_t = pair_memory_transports()
-    client, accept_task, job_ctx, handle = await _make_job_context(rt, server_t, client_t)
+    client, accept_task, job_ctx, _handle = await _make_job_context(rt, server_t, client_t)
 
     raw = b"\x00\x01\x02\x03"
     stream = job_ctx.stream_result()
@@ -102,7 +100,7 @@ async def test_result_stream_write_after_close_raises() -> None:
     """Writing to a closed ResultStream raises InvalidRequestError."""
     rt = _make_rt()
     server_t, client_t = pair_memory_transports()
-    client, accept_task, job_ctx, handle = await _make_job_context(rt, server_t, client_t)
+    client, accept_task, job_ctx, _handle = await _make_job_context(rt, server_t, client_t)
 
     stream = job_ctx.stream_result()
     await stream.close()
@@ -121,7 +119,7 @@ async def test_result_stream_close_idempotent() -> None:
     """Closing a ResultStream twice is a no-op (no exception)."""
     rt = _make_rt()
     server_t, client_t = pair_memory_transports()
-    client, accept_task, job_ctx, handle = await _make_job_context(rt, server_t, client_t)
+    client, accept_task, job_ctx, _handle = await _make_job_context(rt, server_t, client_t)
 
     stream = job_ctx.stream_result()
     await stream.close()
@@ -141,7 +139,7 @@ async def test_result_stream_context_manager_closes() -> None:
     """Using ResultStream as async context manager auto-closes on exit."""
     rt = _make_rt()
     server_t, client_t = pair_memory_transports()
-    client, accept_task, job_ctx, handle = await _make_job_context(rt, server_t, client_t)
+    client, accept_task, job_ctx, _handle = await _make_job_context(rt, server_t, client_t)
 
     async with job_ctx.stream_result() as stream:
         await stream.write("piece one")
@@ -160,7 +158,7 @@ async def test_result_stream_context_manager_handles_exception() -> None:
     """ResultStream context manager closes even when an exception occurs inside."""
     rt = _make_rt()
     server_t, client_t = pair_memory_transports()
-    client, accept_task, job_ctx, handle = await _make_job_context(rt, server_t, client_t)
+    client, accept_task, job_ctx, _handle = await _make_job_context(rt, server_t, client_t)
 
     stream_ref: list[ResultStream] = []
 
@@ -186,7 +184,7 @@ async def test_result_stream_close_with_summary() -> None:
     """ResultStream.close accepts an optional summary string."""
     rt = _make_rt()
     server_t, client_t = pair_memory_transports()
-    client, accept_task, job_ctx, handle = await _make_job_context(rt, server_t, client_t)
+    client, accept_task, job_ctx, _handle = await _make_job_context(rt, server_t, client_t)
 
     stream = job_ctx.stream_result()
     await stream.write("chunk data")
@@ -205,7 +203,7 @@ async def test_result_stream_result_id_property() -> None:
     """ResultStream exposes its result_id via the result_id property."""
     rt = _make_rt()
     server_t, client_t = pair_memory_transports()
-    client, accept_task, job_ctx, handle = await _make_job_context(rt, server_t, client_t)
+    client, accept_task, job_ctx, _handle = await _make_job_context(rt, server_t, client_t)
 
     stream = job_ctx.stream_result(result_id="my-result-123")
     assert stream.result_id == "my-result-123"
@@ -221,12 +219,12 @@ async def test_result_stream_multiple_chunks_accumulate_size() -> None:
     """Writing multiple chunks accumulates total_size correctly."""
     rt = _make_rt()
     server_t, client_t = pair_memory_transports()
-    client, accept_task, job_ctx, handle = await _make_job_context(rt, server_t, client_t)
+    client, accept_task, job_ctx, _handle = await _make_job_context(rt, server_t, client_t)
 
     stream = job_ctx.stream_result()
     await stream.write("abc")  # 3 bytes
-    await stream.write("de")   # 2 bytes
-    await stream.write("f")    # 1 byte
+    await stream.write("de")  # 2 bytes
+    await stream.write("f")  # 1 byte
     assert stream._chunk_seq == 3
     assert stream._total_size == 6
 

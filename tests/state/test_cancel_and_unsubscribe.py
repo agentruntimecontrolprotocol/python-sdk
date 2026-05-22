@@ -128,7 +128,7 @@ async def test_cancel_other_principals_job_raises_permission_denied() -> None:
         token="other",
         capabilities=Capabilities(features=rt.capabilities.features),
     )
-    welcome_a = await ca.connect(client_a)
+    await ca.connect(client_a)
     welcome_b = await cb.connect(client_b)
 
     handle = await ca.submit(agent="slow")
@@ -136,7 +136,6 @@ async def test_cancel_other_principals_job_raises_permission_denied() -> None:
 
     # p2's ctx tries to cancel p1's job
     ctx_b = rt._sessions[welcome_b.session_id]
-    job = rt._jobs[handle.job_id]
     env = Envelope(
         id=new_envelope_id(),
         type="job.cancel",
@@ -198,8 +197,8 @@ async def test_cancel_own_job_cancels_task() -> None:
 
 async def test_unsubscribe_unknown_job_is_noop() -> None:
     """handle_unsubscribe with unknown job_id must silently return."""
-    from arcp._runtime._handlers import handle_unsubscribe
     from arcp._messages.execution import JobUnsubscribePayload
+    from arcp._runtime._handlers import handle_unsubscribe
 
     rt = _make_rt()
     server_t, client_t = pair_memory_transports()
