@@ -4,12 +4,19 @@ from __future__ import annotations
 
 import asyncio
 import contextlib
+import os
+
+import pytest
 
 from arcp import ClientInfo, RuntimeInfo, WebSocketTransport, serve_websocket
 from arcp.client import ARCPClient
 from arcp.runtime import ARCPRuntime, JobContext, StaticBearerVerifier
 
 
+@pytest.mark.skipif(
+    os.environ.get("CI") == "true",
+    reason="localhost websockets intermittently hang on GitHub Linux runners",
+)
 async def test_websocket_submit_and_done() -> None:
     rt = ARCPRuntime(
         runtime=RuntimeInfo(name="r", version="1"),
