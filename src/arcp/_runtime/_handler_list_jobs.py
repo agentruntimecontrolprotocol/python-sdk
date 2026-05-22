@@ -1,5 +1,7 @@
 """`session.list_jobs` handler with filter / pagination."""
 
+# pyright: reportPrivateUsage=false
+
 from __future__ import annotations
 
 from datetime import datetime

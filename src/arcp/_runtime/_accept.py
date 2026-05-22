@@ -1,5 +1,7 @@
 """Server-side session accept-loop and read pump."""
 
+# pyright: reportPrivateUsage=false
+
 from __future__ import annotations
 
 import asyncio

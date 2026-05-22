@@ -23,7 +23,7 @@ class IdempotencyStore:
     """Per-principal idempotency map. TTL sweep is amortized into reads/writes."""
 
     ttl_sec: float = 24 * 60 * 60
-    _by_key: dict[tuple[str, str], IdempotencyEntry] = field(default_factory=dict)
+    _by_key: dict[tuple[str, str], IdempotencyEntry] = field(default_factory=dict)  # pyright: ignore[reportUnknownVariableType]
 
     @staticmethod
     def fingerprint(submit_payload: dict[str, Any]) -> str:

@@ -5,7 +5,7 @@ from __future__ import annotations
 import asyncio
 import json
 import sys
-from typing import Any
+from typing import Any, cast
 
 from .base import TransportClosed
 
@@ -40,7 +40,7 @@ class StdioTransport:
             raise TransportClosed(f"malformed NDJSON: {e}") from e
         if not isinstance(parsed, dict):
             raise TransportClosed("expected JSON object frame")
-        return parsed
+        return cast(dict[str, Any], parsed)
 
     async def close(self) -> None:
         if self._closed:

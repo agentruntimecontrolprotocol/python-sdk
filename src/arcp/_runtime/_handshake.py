@@ -1,5 +1,7 @@
 """Server-side session handshake: validate hello, negotiate features, send welcome."""
 
+# pyright: reportPrivateUsage=false
+
 from __future__ import annotations
 
 import asyncio

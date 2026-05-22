@@ -6,7 +6,6 @@ import asyncio
 import contextlib
 from collections.abc import Callable
 from dataclasses import dataclass, field
-from datetime import UTC, datetime
 from typing import Any, Self
 
 from .._auth.bearer import BearerVerifier, Identity
@@ -43,10 +42,6 @@ from .session import (
 _LOG = get_logger("arcp.runtime.server")
 
 
-def _now_iso() -> str:
-    return datetime.now(UTC).isoformat().replace("+00:00", "Z")
-
-
 JobAuthorizationPolicy = Callable[["AuthorizationContext"], bool]
 
 
@@ -67,7 +62,7 @@ def _default_authz_policy(ctx: AuthorizationContext) -> bool:
 @dataclass
 class _AgentRegistration:
     name: str
-    versions: dict[str, Agent] = field(default_factory=dict)
+    versions: dict[str, Agent] = field(default_factory=dict)  # pyright: ignore[reportUnknownVariableType]
     default_version: str | None = None
     bare: Agent | None = None  # registered without a version
 

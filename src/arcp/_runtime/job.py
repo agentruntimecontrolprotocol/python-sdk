@@ -60,7 +60,7 @@ class Job:
     chunked_result_started: bool = False
     inline_result_emitted: bool = False
     submitted_at: datetime = field(default_factory=lambda: datetime.now(UTC))
-    _last_budget_emit: dict[str, Decimal] = field(default_factory=dict)
+    _last_budget_emit: dict[str, Decimal] = field(default_factory=dict)  # pyright: ignore[reportUnknownVariableType]
 
     @property
     def agent_ref(self) -> str:

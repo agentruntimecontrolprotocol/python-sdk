@@ -1,10 +1,12 @@
 """Inbound envelope dispatch for the client read pump."""
 
+# pyright: reportPrivateUsage=false
+
 from __future__ import annotations
 
 from collections.abc import Awaitable, Callable
 from datetime import UTC, datetime
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from .._envelope import Envelope
 from .._errors import error_from_payload
@@ -99,7 +101,7 @@ async def _on_job_event(client: ARCPClient, env: Envelope) -> None:
     if env.job_id is None:
         return
     kind = env.payload.get("kind")
-    body = env.payload.get("body", {}) or {}
+    body: dict[str, Any] = env.payload.get("body", {}) or {}
     handle = client._handles.get(env.job_id)
     if handle is None:
         return

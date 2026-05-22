@@ -49,16 +49,16 @@ def redact_credentials(obj: Any) -> Any:
 
 def _redact_credentials_in_place(obj: Any) -> None:
     if isinstance(obj, dict):
-        mapping: dict[Any, Any] = obj
+        mapping: dict[Any, Any] = obj  # pyright: ignore[reportUnknownVariableType]
         credentials = mapping.get("credentials")
         if isinstance(credentials, (list, tuple)):
-            for cred in credentials:
+            for cred in credentials:  # pyright: ignore[reportUnknownVariableType]
                 if isinstance(cred, dict) and "value" in cred:
                     cred["value"] = "<redacted>"
         for value in mapping.values():
             _redact_credentials_in_place(value)
     elif isinstance(obj, (list, tuple)):
-        for item in obj:
+        for item in obj:  # pyright: ignore[reportUnknownVariableType]
             _redact_credentials_in_place(item)
 
 

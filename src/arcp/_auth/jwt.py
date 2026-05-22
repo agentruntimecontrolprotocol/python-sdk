@@ -53,7 +53,7 @@ class JWTVerifier:
 
     async def verify(self, token: str) -> Identity:
         try:
-            claims = jwt.decode(
+            claims: dict[str, Any] = jwt.decode(
                 token,
                 self._key_for(token),
                 algorithms=self._algorithms,
@@ -69,7 +69,7 @@ class JWTVerifier:
         if isinstance(scopes_raw, str):
             scopes = tuple(s for s in scopes_raw.split() if s)
         elif isinstance(scopes_raw, list):
-            scopes = tuple(str(s) for s in scopes_raw)
+            scopes = tuple(str(s) for s in scopes_raw)  # pyright: ignore[reportUnknownArgumentType, reportUnknownVariableType]
         else:
             scopes = ()
         return Identity(principal=principal, scopes=scopes)

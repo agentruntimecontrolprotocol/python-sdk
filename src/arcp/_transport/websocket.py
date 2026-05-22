@@ -6,7 +6,7 @@ import asyncio
 import contextlib
 import json
 from collections.abc import Awaitable, Callable
-from typing import Any
+from typing import Any, cast
 
 from websockets.asyncio.client import ClientConnection, connect
 from websockets.asyncio.server import Server, ServerConnection, serve
@@ -46,7 +46,7 @@ class WebSocketTransport:
             raise TransportClosed(f"malformed JSON frame: {e}") from e
         if not isinstance(parsed, dict):
             raise TransportClosed("expected JSON object frame")
-        return parsed
+        return cast(dict[str, Any], parsed)
 
     async def close(self) -> None:
         if self._closed:

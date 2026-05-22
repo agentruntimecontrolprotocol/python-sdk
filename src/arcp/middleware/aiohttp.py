@@ -5,7 +5,7 @@ from __future__ import annotations
 import contextlib
 import json
 from collections.abc import Awaitable, Callable, Sequence
-from typing import Any
+from typing import Any, cast
 
 from .._transport.base import TransportClosed
 
@@ -45,7 +45,7 @@ class _AiohttpTransport:
             raise TransportClosed(f"malformed JSON frame: {e}") from e
         if not isinstance(parsed, dict):
             raise TransportClosed("expected JSON object frame")
-        return parsed
+        return cast(dict[str, Any], parsed)
 
     async def close(self) -> None:
         if self._closed:

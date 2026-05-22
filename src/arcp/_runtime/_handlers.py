@@ -1,5 +1,7 @@
 """Envelope dispatch handlers (session.* and job.* verbs)."""
 
+# pyright: reportPrivateUsage=false
+
 from __future__ import annotations
 
 import asyncio

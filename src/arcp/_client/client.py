@@ -6,7 +6,6 @@ import asyncio
 from collections import deque
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
-from datetime import UTC, datetime
 from typing import Any
 
 from .._envelope import Envelope
@@ -37,10 +36,6 @@ from .._version import V1_1_FEATURES, intersect_features
 from .handles import JobHandle, JobSubscription
 
 _LOG = get_logger("arcp.client")
-
-
-def _now_iso() -> str:
-    return datetime.now(UTC).isoformat().replace("+00:00", "Z")
 
 
 @dataclass(frozen=True)
@@ -181,7 +176,7 @@ class ARCPClient:
 
     def _fail_all_handles(self, exc: BaseException) -> None:
         for h in list(self._handles.values()):
-            h._reject_terminal(exc)
+            h._reject_terminal(exc)  # pyright: ignore[reportPrivateUsage]
         self._handles.clear()
         for fut in list(self._pending_accepts):
             if not fut.done():

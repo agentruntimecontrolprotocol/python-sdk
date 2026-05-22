@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import json
 from collections.abc import Callable
-from typing import Any
+from typing import Any, cast
 
 from opentelemetry import propagate, trace
 from opentelemetry.trace import SpanKind, Tracer
@@ -27,10 +27,10 @@ def _payload_attrs(payload: dict[str, Any]) -> dict[str, Any]:
         out["arcp.agent"] = agent
     lease = payload.get("lease") or payload.get("lease_request")
     if isinstance(lease, dict):
-        out["arcp.lease.capabilities"] = ",".join(sorted(lease.keys()))
+        out["arcp.lease.capabilities"] = ",".join(sorted(cast(dict[str, Any], lease).keys()))
     constraints = payload.get("lease_constraints")
-    if isinstance(constraints, dict) and constraints.get("expires_at"):
-        out["arcp.lease.expires_at"] = constraints["expires_at"]
+    if isinstance(constraints, dict) and cast(dict[str, Any], constraints).get("expires_at"):
+        out["arcp.lease.expires_at"] = cast(dict[str, Any], constraints)["expires_at"]
     budget = payload.get("budget")
     if isinstance(budget, dict):
         out["arcp.budget.remaining"] = json.dumps(budget, sort_keys=True)
@@ -50,6 +50,14 @@ def _extract_attrs(env: dict[str, Any], direction: str) -> dict[str, Any]:
     return out
 
 
+def _default_send_name(env: dict[str, Any]) -> str:
+    return f"arcp.send {env.get('type', '?')}"
+
+
+def _default_recv_name(env: dict[str, Any]) -> str:
+    return f"arcp.recv {env.get('type', '?')}"
+
+
 class _TracedTransport:
     def __init__(
         self,
@@ -60,8 +68,8 @@ class _TracedTransport:
     ) -> None:
         self._inner = inner
         self._tracer = tracer
-        self._send_name = send_span_name or (lambda env: f"arcp.send {env.get('type', '?')}")
-        self._recv_name = recv_span_name or (lambda env: f"arcp.recv {env.get('type', '?')}")
+        self._send_name: Callable[[dict[str, Any]], str] = send_span_name or _default_send_name
+        self._recv_name: Callable[[dict[str, Any]], str] = recv_span_name or _default_recv_name
 
     async def send(self, envelope: dict[str, Any]) -> None:
         with self._tracer.start_as_current_span(
@@ -80,9 +88,15 @@ class _TracedTransport:
 
     async def recv(self) -> dict[str, Any]:
         envelope = await self._inner.recv()
-        extensions = envelope.get("extensions") or {}
-        carrier = extensions.get(OTEL_EXTENSION_KEY) if isinstance(extensions, dict) else None
-        ctx = propagate.extract(carrier) if isinstance(carrier, dict) else None
+        raw_ext = envelope.get("extensions")
+        extensions: dict[str, Any] = (
+            cast(dict[str, Any], raw_ext) if isinstance(raw_ext, dict) else {}
+        )
+        carrier_val = extensions.get(OTEL_EXTENSION_KEY)
+        carrier: dict[str, Any] | None = (
+            cast(dict[str, Any], carrier_val) if isinstance(carrier_val, dict) else None
+        )
+        ctx = propagate.extract(carrier) if carrier is not None else None
         with self._tracer.start_as_current_span(
             self._recv_name(envelope), context=ctx, kind=SpanKind.CONSUMER
         ) as span:

@@ -1,5 +1,7 @@
 """Outbound client verbs: submit, cancel, list_jobs, subscribe, unsubscribe, ack."""
 
+# pyright: reportPrivateUsage=false
+
 from __future__ import annotations
 
 import asyncio

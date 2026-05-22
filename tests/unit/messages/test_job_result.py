@@ -30,6 +30,6 @@ def test_success_with_streamed_id() -> None:
 def test_invalid_final_status() -> None:
     with pytest.raises(ValidationError):
         JobResultPayload(
-            final_status="error",
-            completed_at="2026-05-14T12:00:00Z",  # type: ignore[arg-type]
+            final_status="error",  # pyright: ignore[reportArgumentType]
+            completed_at="2026-05-14T12:00:00Z",
         )

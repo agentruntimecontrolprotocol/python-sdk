@@ -1,5 +1,7 @@
 """Agent execution: timeout, lease watchdog, terminal-event finalization."""
 
+# pyright: reportPrivateUsage=false
+
 from __future__ import annotations
 
 import asyncio

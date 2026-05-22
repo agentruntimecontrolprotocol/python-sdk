@@ -45,7 +45,7 @@ def validate_lease_shape(lease: Lease) -> None:
     for ns, patterns in lease.items():
         if not _is_valid_capability_namespace(ns):
             raise InvalidRequestError(f"unknown lease capability namespace: {ns!r}")
-        if not isinstance(patterns, list) or not all(isinstance(p, str) for p in patterns):
+        if not isinstance(patterns, list) or not all(isinstance(p, str) for p in patterns):  # pyright: ignore[reportUnnecessaryIsInstance]
             raise InvalidRequestError(f"lease patterns for {ns!r} must be list[str]")
         if ns == "cost.budget":
             for p in patterns:

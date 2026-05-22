@@ -75,8 +75,6 @@ Lease = dict[str, list[str]]
 
 def _ensure_utc_iso8601(value: str) -> datetime:
     """Parse a strict UTC ISO 8601 timestamp (`Z` or `+00:00` only)."""
-    if not isinstance(value, str):
-        raise ValueError("expires_at must be a string")
     s = value.replace("Z", "+00:00")
     try:
         dt = datetime.fromisoformat(s)
