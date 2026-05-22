@@ -29,6 +29,7 @@ from .event_bodies import (
 _AGENT_NAME_RE = re.compile(r"^[a-zA-Z][a-zA-Z0-9._-]*$")
 _AGENT_VERSION_RE = re.compile(r"^[a-zA-Z0-9][a-zA-Z0-9._-]*$")
 
+
 def parse_agent_ref(ref: str) -> tuple[str, str | None]:
     """Parse `name` or `name@version`; raise `ValueError` on malformed input."""
     if "@" in ref:
@@ -40,11 +41,14 @@ def parse_agent_ref(ref: str) -> tuple[str, str | None]:
         raise ValueError(f"invalid agent name: {ref!r}")
     return ref, None
 
+
 def format_agent_ref(name: str, version: str | None) -> str:
     """Inverse of `parse_agent_ref`."""
     return f"{name}@{version}" if version else name
 
+
 _BUDGET_AMOUNT_RE = re.compile(r"^([A-Za-z][A-Za-z0-9]{0,9}):([0-9]+(?:\.[0-9]+)?)$")
+
 
 def parse_budget_amount(amount: str) -> tuple[str, Decimal]:
     """Parse `currency:decimal`; raise `ValueError` on malformed input."""
@@ -60,11 +64,14 @@ def parse_budget_amount(amount: str) -> tuple[str, Decimal]:
         raise ValueError("budget amount must be non-negative")
     return currency, value
 
+
 def format_budget_amount(currency: str, value: Decimal) -> str:
     return f"{currency}:{value}"
 
+
 Lease = dict[str, list[str]]
 """A lease maps capability namespace to a list of glob patterns."""
+
 
 def _ensure_utc_iso8601(value: str) -> datetime:
     """Parse a strict UTC ISO 8601 timestamp (`Z` or `+00:00` only)."""
@@ -79,6 +86,7 @@ def _ensure_utc_iso8601(value: str) -> datetime:
         raise ValueError(f"expires_at must be UTC: {value!r}")
     return dt
 
+
 class LeaseConstraints(BaseModel):
     """Optional lease constraints (v1.1 §9.5)."""
 
@@ -92,6 +100,7 @@ class LeaseConstraints(BaseModel):
             return v
         _ensure_utc_iso8601(v)
         return v
+
 
 class JobSubmitPayload(BaseModel):
     model_config = ConfigDict(extra="allow")
@@ -109,6 +118,7 @@ class JobSubmitPayload(BaseModel):
     def _check_agent(cls, v: str) -> str:
         parse_agent_ref(v)
         return v
+
 
 class CredentialConstraintsPayload(BaseModel):
     model_config = ConfigDict(extra="allow", populate_by_name=True)
@@ -140,10 +150,12 @@ class JobAcceptedPayload(BaseModel):
     trace_id: str | None = None
     credentials: tuple[CredentialPayload, ...] | None = None
 
+
 class JobCancelPayload(BaseModel):
     model_config = ConfigDict(extra="allow")
     reason: str
     code: str | None = None
+
 
 class JobEventPayload(BaseModel):
     model_config = ConfigDict(extra="allow")
@@ -158,6 +170,7 @@ class JobEventPayload(BaseModel):
             return v
         raise ValueError(f"unknown event kind: {v!r}")
 
+
 class JobResultPayload(BaseModel):
     model_config = ConfigDict(extra="allow")
     final_status: Literal["success", "cancelled", "timed_out"]
@@ -166,6 +179,7 @@ class JobResultPayload(BaseModel):
     result_size: int | None = None
     summary: str | None = None
     completed_at: str
+
 
 class JobErrorPayload(BaseModel):
     model_config = ConfigDict(extra="allow")
@@ -176,11 +190,13 @@ class JobErrorPayload(BaseModel):
     completed_at: str
     details: dict[str, Any] | None = None
 
+
 class JobSubscribePayload(BaseModel):
     model_config = ConfigDict(extra="allow")
     job_id: str
     history: bool = False
     from_event_seq: int | None = Field(default=None, ge=0)
+
 
 class JobSubscribedPayload(BaseModel):
     model_config = ConfigDict(extra="allow")
@@ -194,9 +210,11 @@ class JobSubscribedPayload(BaseModel):
     subscribed_from: int = 0
     replayed: int = 0
 
+
 class JobUnsubscribePayload(BaseModel):
     model_config = ConfigDict(extra="allow")
     job_id: str
+
 
 __all__ = (
     "EVENT_KINDS",

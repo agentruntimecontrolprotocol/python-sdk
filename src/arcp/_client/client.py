@@ -38,8 +38,10 @@ from .handles import JobHandle, JobSubscription
 
 _LOG = get_logger("arcp.client")
 
+
 def _now_iso() -> str:
     return datetime.now(UTC).isoformat().replace("+00:00", "Z")
+
 
 @dataclass(frozen=True)
 class AutoAckOptions:
@@ -47,6 +49,7 @@ class AutoAckOptions:
 
     every_n: int = 100
     interval_sec: float = 1.0
+
 
 class ARCPClient:
     """ARCP client: open/resume a session, submit jobs, observe events."""
@@ -275,5 +278,6 @@ class ARCPClient:
 
     async def aclose(self) -> None:
         await self.close()
+
 
 __all__ = ("ARCPClient", "AutoAckOptions")

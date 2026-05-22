@@ -42,10 +42,13 @@ from .session import (
 
 _LOG = get_logger("arcp.runtime.server")
 
+
 def _now_iso() -> str:
     return datetime.now(UTC).isoformat().replace("+00:00", "Z")
 
+
 JobAuthorizationPolicy = Callable[["AuthorizationContext"], bool]
+
 
 @dataclass(frozen=True)
 class AuthorizationContext:
@@ -55,9 +58,11 @@ class AuthorizationContext:
     job: Job
     operation: str  # "list" | "subscribe" | "cancel"
 
+
 def _default_authz_policy(ctx: AuthorizationContext) -> bool:
     """Same-principal default: requester must own the job (§14)."""
     return ctx.job.submitter_principal == ctx.requester_principal
+
 
 @dataclass
 class _AgentRegistration:
@@ -65,6 +70,7 @@ class _AgentRegistration:
     versions: dict[str, Agent] = field(default_factory=dict)
     default_version: str | None = None
     bare: Agent | None = None  # registered without a version
+
 
 class ARCPRuntime:
     """Server-side runtime: register agents, accept transports, dispatch envelopes."""
@@ -219,6 +225,7 @@ class ARCPRuntime:
             with contextlib.suppress(asyncio.CancelledError, Exception):
                 await task
         await self.event_log.close()
+
 
 from . import _handlers  # noqa: E402
 
