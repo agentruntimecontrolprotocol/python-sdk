@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+from copy import deepcopy
 from typing import Any
 
 import structlog
@@ -39,4 +40,26 @@ def get_logger(name: str | None = None, **initial: Any) -> Any:
     return log
 
 
-__all__ = ("get_logger",)
+def redact_credentials(obj: Any) -> Any:
+    """Return a copy with every `credentials[*].value` replaced by `<redacted>`."""
+    out = deepcopy(obj)
+    _redact_credentials_in_place(out)
+    return out
+
+
+def _redact_credentials_in_place(obj: Any) -> None:
+    if isinstance(obj, dict):
+        mapping: dict[Any, Any] = obj
+        credentials = mapping.get("credentials")
+        if isinstance(credentials, (list, tuple)):
+            for cred in credentials:
+                if isinstance(cred, dict) and "value" in cred:
+                    cred["value"] = "<redacted>"
+        for value in mapping.values():
+            _redact_credentials_in_place(value)
+    elif isinstance(obj, (list, tuple)):
+        for item in obj:
+            _redact_credentials_in_place(item)
+
+
+__all__ = ("get_logger", "redact_credentials")

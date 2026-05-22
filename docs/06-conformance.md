@@ -87,6 +87,10 @@ values are `Implemented` or `Deferred` only. Citations are
 | §9.6 `cost.budget` initial snapshot      | Implemented | `arcp/_runtime/lease.py:L115`             |
 | §9.6 Per-event budget decrement          | Implemented | `arcp/_runtime/job.py:L68`                |
 | §9.6 `BUDGET_EXHAUSTED` on floor         | Implemented | `arcp/_runtime/job.py:L68`                |
+| §9.7 `model.use` authorization           | Implemented | `arcp/_runtime/job.py:L285`               |
+| §9.8 Provisioned credential interface    | Implemented | `arcp/_runtime/credentials.py:L1`         |
+| §9.8 Issue credentials on job acceptance | Implemented | `arcp/_runtime/_handlers.py:L158`         |
+| §9.8 Revoke credentials on terminal state | Implemented | `arcp/_runtime/_job_runner.py:L145`      |
 
 ## §10 Delegation
 

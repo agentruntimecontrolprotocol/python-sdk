@@ -17,6 +17,18 @@ V1_1_FEATURES: tuple[str, ...] = (
     "agent_versions",
 )
 
+PROVISIONED_CREDENTIAL_FEATURES: tuple[str, ...] = (
+    "model.use",
+    "provisioned_credentials",
+)
+
+
+def features_for_runtime(*, provisioner_configured: bool) -> tuple[str, ...]:
+    """Return the runtime's default v1.1 feature set for its credential config."""
+    if not provisioner_configured:
+        return V1_1_FEATURES
+    return V1_1_FEATURES + PROVISIONED_CREDENTIAL_FEATURES
+
 
 def intersect_features(
     a: tuple[str, ...] | list[str], b: tuple[str, ...] | list[str]
@@ -26,4 +38,11 @@ def intersect_features(
     return tuple(f for f in a if f in bset)
 
 
-__all__ = ("IMPL_VERSION", "PROTOCOL_VERSION", "V1_1_FEATURES", "intersect_features")
+__all__ = (
+    "IMPL_VERSION",
+    "PROTOCOL_VERSION",
+    "PROVISIONED_CREDENTIAL_FEATURES",
+    "V1_1_FEATURES",
+    "features_for_runtime",
+    "intersect_features",
+)

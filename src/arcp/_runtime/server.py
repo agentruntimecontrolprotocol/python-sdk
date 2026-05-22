@@ -28,7 +28,8 @@ from .._messages.session import (
 from .._store.eventlog import EventLog, InMemoryEventLog
 from .._store.idempotency import IdempotencyStore
 from .._transport.base import Transport
-from .._version import V1_1_FEATURES
+from .._version import PROVISIONED_CREDENTIAL_FEATURES, features_for_runtime
+from .credentials import CredentialProvisioner, RevocationLog
 from .job import Agent, Job
 from .lease import (
     LeaseOpContext,
@@ -81,6 +82,8 @@ class ARCPRuntime:
         chunk_size_cap: int = 1024 * 1024,
         job_authorization_policy: JobAuthorizationPolicy | None = None,
         event_log: EventLog | None = None,
+        credential_provisioner: CredentialProvisioner | None = None,
+        revocation_log: RevocationLog | None = None,
         logger: Any = None,
     ) -> None:
         # PLR0913: every arg is an optional, keyword-only configuration knob.
@@ -88,8 +91,15 @@ class ARCPRuntime:
         # clarity gain. TODO(arcp/v2): revisit on a major-version bump.
         self.runtime_info = runtime
         self.bearer = bearer
-        self.capabilities = capabilities or Capabilities(
-            encodings=("json",), features=V1_1_FEATURES
+        if credential_provisioner is not None and revocation_log is None:
+            raise InvalidRequestError(
+                "provisioned_credentials requires a revocation_log for durable revocation"
+            )
+        self.credential_provisioner = credential_provisioner
+        self.revocation_log = revocation_log
+        self.capabilities = _normalize_capabilities(
+            capabilities,
+            provisioner_configured=credential_provisioner is not None,
         )
         self.heartbeat_interval_sec = heartbeat_interval_sec
         self.resume_window_sec = resume_window_sec
@@ -235,3 +245,23 @@ __all__ = (
     "assert_lease_subset",
     "validate_lease_op",
 )
+
+
+def _normalize_capabilities(
+    capabilities: Capabilities | None,
+    *,
+    provisioner_configured: bool,
+) -> Capabilities:
+    if capabilities is None:
+        return Capabilities(
+            encodings=("json",),
+            features=features_for_runtime(provisioner_configured=provisioner_configured),
+        )
+    features = tuple(
+        feature
+        for feature in capabilities.features
+        if provisioner_configured or feature not in PROVISIONED_CREDENTIAL_FEATURES
+    )
+    if provisioner_configured:
+        features = tuple(dict.fromkeys((*features, *PROVISIONED_CREDENTIAL_FEATURES)))
+    return capabilities.model_copy(update={"features": features})

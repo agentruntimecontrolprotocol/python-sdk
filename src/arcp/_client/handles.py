@@ -9,6 +9,7 @@ from dataclasses import dataclass
 from typing import Any
 
 from .._messages.execution import (
+    CredentialPayload,
     JobAcceptedPayload,
     JobResultPayload,
     Lease,
@@ -42,6 +43,10 @@ class JobHandle:
     @property
     def budget(self) -> dict[str, str] | None:
         return self.accepted.budget
+
+    @property
+    def credentials(self) -> tuple[CredentialPayload, ...]:
+        return self.accepted.credentials or ()
 
     @property
     def trace_id(self) -> str | None:

@@ -25,6 +25,8 @@ from ._errors import (
     error_from_payload,
 )
 from ._messages.execution import (
+    CredentialConstraintsPayload,
+    CredentialPayload,
     Lease,
     LeaseConstraints,
     parse_agent_ref,
@@ -38,6 +40,7 @@ from ._messages.session import (
     SessionResume,
     SessionWelcomePayload,
 )
+from ._runtime.credentials import Credential, CredentialConstraints
 from ._transport.base import Transport, TransportClosed
 from ._transport.in_memory import MemoryTransport, pair_memory_transports
 from ._transport.stdio import StdioTransport
@@ -59,6 +62,10 @@ __all__ = (
     # messages (commonly-used)
     "Capabilities",
     "ClientInfo",
+    "Credential",
+    "CredentialConstraints",
+    "CredentialConstraintsPayload",
+    "CredentialPayload",
     "DuplicateKeyError",
     # envelope
     "Envelope",

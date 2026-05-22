@@ -22,11 +22,13 @@ async def test_websocket_submit_and_done() -> None:
 
     rt.register_agent("echo", echo)
 
-    port = 19000
+    port = 0
     server = await serve_websocket(rt.accept, host="127.0.0.1", port=port, path="/arcp")
     try:
+        assert server.sockets is not None
+        bound_port = server.sockets[0].getsockname()[1]
         client = ARCPClient(client=ClientInfo(name="c", version="1"), token="tok")
-        transport = await WebSocketTransport.connect(f"ws://127.0.0.1:{port}/arcp")
+        transport = await WebSocketTransport.connect(f"ws://127.0.0.1:{bound_port}/arcp")
         try:
             await client.connect(transport)
             handle = await client.submit(agent="echo", input={"hi": 1})

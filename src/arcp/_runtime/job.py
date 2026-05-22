@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import asyncio
 from collections.abc import Awaitable, Callable
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from datetime import UTC, datetime
 from decimal import Decimal
 from typing import TYPE_CHECKING, Any, Literal
@@ -25,6 +25,8 @@ from .._ulid import new_envelope_id, new_result_id
 from .lease import LeaseOpContext, validate_lease_op
 
 if TYPE_CHECKING:
+    from .credentials import Credential
+    from .server import ARCPRuntime
     from .session import SessionContext
 
 _LOG = get_logger("arcp.runtime.job")
@@ -53,6 +55,7 @@ class Job:
     delegate_id: str | None = None
     trace_id: str | None = None
     submitter_principal: str | None = None
+    credentials: tuple[Credential, ...] = ()
     state: JobStateName = "pending"
     chunked_result_started: bool = False
     inline_result_emitted: bool = False
@@ -131,6 +134,7 @@ class JobContext:
     """The async surface an agent coroutine sees."""
 
     job: Job
+    runtime: ARCPRuntime
     signal: asyncio.Event
     logger: Any
     chunk_size_cap: int = 1024 * 1024  # §14 SHOULD cap
@@ -168,6 +172,10 @@ class JobContext:
     def budget(self) -> dict[str, Decimal]:
         # Read-only snapshot.
         return dict(self.job.budget)
+
+    @property
+    def credentials(self) -> tuple[Credential, ...]:
+        return self.job.credentials
 
     @property
     def trace_id(self) -> str | None:
@@ -273,6 +281,30 @@ class JobContext:
             constraints=self.lease_constraints,
             budget=self.job.budget if "cost.budget" in self.lease else None,
         )
+
+    def authorize_model(self, model_id: str, *, now: datetime | None = None) -> None:
+        """Authorize an upstream model id against the job's `model.use` lease."""
+        validate_lease_op(
+            self.lease,
+            LeaseOpContext(capability="model.use", target=model_id, now=now),
+            constraints=self.lease_constraints,
+        )
+
+    async def rotate_credential(self, credential_id: str, new_value: str) -> None:
+        """Publish a rotated credential value and revoke the prior credential promptly."""
+        prior = next((cred for cred in self.job.credentials if cred.id == credential_id), None)
+        if prior is None:
+            raise InvalidRequestError(f"unknown credential id: {credential_id}")
+        await self.job.emit_event(
+            "status",
+            {"phase": "credential_rotated", "id": credential_id, "value": new_value},
+        )
+        self.job.credentials = tuple(
+            replace(cred, value=new_value) if cred.id == credential_id else cred
+            for cred in self.job.credentials
+        )
+        if self.runtime.credential_provisioner is not None:
+            await self.runtime.credential_provisioner.revoke(prior.id)
 
 
 # ---- agent type alias ----------------------------------------------------

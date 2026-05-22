@@ -110,6 +110,23 @@ class JobSubmitPayload(BaseModel):
         parse_agent_ref(v)
         return v
 
+class CredentialConstraintsPayload(BaseModel):
+    model_config = ConfigDict(extra="allow", populate_by_name=True)
+    cost_budget: tuple[str, ...] = Field(default=(), alias="cost.budget")
+    model_use: tuple[str, ...] = Field(default=(), alias="model.use")
+    expires_at: str | None = None
+
+
+class CredentialPayload(BaseModel):
+    model_config = ConfigDict(extra="allow", populate_by_name=True)
+    id: str
+    scheme: Literal["bearer"]
+    value: str
+    endpoint: str
+    profile: str | None = None
+    constraints: CredentialConstraintsPayload | None = None
+
+
 class JobAcceptedPayload(BaseModel):
     model_config = ConfigDict(extra="allow")
     job_id: str
@@ -121,6 +138,7 @@ class JobAcceptedPayload(BaseModel):
     parent_job_id: str | None = None
     delegate_id: str | None = None
     trace_id: str | None = None
+    credentials: tuple[CredentialPayload, ...] | None = None
 
 class JobCancelPayload(BaseModel):
     model_config = ConfigDict(extra="allow")
@@ -183,6 +201,8 @@ class JobUnsubscribePayload(BaseModel):
 __all__ = (
     "EVENT_KINDS",
     "ArtifactRefBody",
+    "CredentialConstraintsPayload",
+    "CredentialPayload",
     "DelegateBody",
     "JobAcceptedPayload",
     "JobCancelPayload",

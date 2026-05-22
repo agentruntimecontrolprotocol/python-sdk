@@ -22,7 +22,15 @@ from .._messages.execution import (
 )
 
 RESERVED_CAPABILITIES: frozenset[str] = frozenset(
-    {"fs.read", "fs.write", "net.fetch", "tool.call", "agent.delegate", "cost.budget"}
+    {
+        "fs.read",
+        "fs.write",
+        "net.fetch",
+        "tool.call",
+        "agent.delegate",
+        "cost.budget",
+        "model.use",
+    }
 )
 
 

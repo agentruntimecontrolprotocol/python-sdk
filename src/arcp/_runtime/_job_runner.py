@@ -8,6 +8,7 @@ from typing import TYPE_CHECKING, Any
 
 from .._errors import ARCPError, LeaseExpiredError
 from .._messages.execution import JobErrorPayload, JobResultPayload
+from .credentials import UpstreamBudgetExhausted
 from .job import Agent, Job, JobContext
 from .lease import _parse_iso_utc
 
@@ -36,6 +37,7 @@ async def run_job(
         job.state = "running"
         ctx = JobContext(
             job=job,
+            runtime=runtime,
             signal=asyncio.Event(),
             logger=runtime.logger.bind(job_id=job.job_id),
             chunk_size_cap=runtime.chunk_size_cap,
@@ -51,6 +53,7 @@ async def run_job(
         finally:
             if watchdog is not None and not watchdog.done():
                 watchdog.cancel()
+            await _revoke_credentials(runtime, job)
             runtime._job_tasks.pop(job.job_id, None)
 
 
@@ -108,6 +111,16 @@ async def _finalize_failure(runtime: ARCPRuntime, job: Job, exc: BaseException) 
             )
         )
         return
+    if isinstance(exc, UpstreamBudgetExhausted):
+        await job.emit_error(
+            JobErrorPayload(
+                code="BUDGET_EXHAUSTED",
+                message=str(exc),
+                retryable=False,
+                completed_at=_now_iso(),
+            )
+        )
+        return
     if isinstance(exc, ARCPError):
         await job.emit_error(
             JobErrorPayload(
@@ -127,6 +140,36 @@ async def _finalize_failure(runtime: ARCPRuntime, job: Job, exc: BaseException) 
             completed_at=_now_iso(),
         )
     )
+
+
+async def _revoke_credentials(runtime: ARCPRuntime, job: Job) -> None:
+    if runtime.credential_provisioner is None or runtime.revocation_log is None:
+        return
+    for credential in job.credentials:
+        revoked = await _revoke_with_retry(runtime, credential.id)
+        if revoked:
+            await runtime.revocation_log.forget(job.job_id, credential.id)
+
+
+async def _revoke_with_retry(runtime: ARCPRuntime, credential_id: str) -> bool:
+    assert runtime.credential_provisioner is not None
+    delay = 0.01
+    for attempt in range(3):
+        try:
+            await runtime.credential_provisioner.revoke(credential_id)
+        except Exception as e:
+            if attempt == 2:
+                runtime.logger.exception(
+                    "credential_revoke_failed",
+                    credential_id=credential_id,
+                    error=str(e),
+                )
+                return False
+            await asyncio.sleep(delay)
+            delay *= 2
+        else:
+            return True
+    return False
 
 
 async def _lease_watchdog(runtime: ARCPRuntime, job: Job, expires_at_iso: str) -> None:

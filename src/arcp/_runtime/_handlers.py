@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import contextlib
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 
@@ -10,11 +11,14 @@ from .._envelope import Envelope
 from .._errors import (
     AgentVersionNotAvailableError,
     DuplicateKeyError,
+    InternalError,
     InvalidRequestError,
     JobNotFoundError,
     PermissionDeniedError,
 )
 from .._messages.execution import (
+    CredentialConstraintsPayload,
+    CredentialPayload,
     JobAcceptedPayload,
     JobCancelPayload,
     JobSubmitPayload,
@@ -29,6 +33,7 @@ from .._messages.session import (
     SessionPongPayload,
 )
 from .._ulid import new_envelope_id, new_job_id
+from .credentials import Credential, JobCredentialContext
 from .job import Job
 from .lease import (
     echo_budget_for_accept,
@@ -86,7 +91,7 @@ async def handle_submit(runtime: ARCPRuntime, ctx: SessionContext, env: Envelope
         agent_fn, name, version = runtime._resolve_agent(submit.agent)
     except AgentVersionNotAvailableError:
         raise
-    job, accept_env = _build_job_and_accept(runtime, ctx, env, submit, name, version)
+    job, accept_env = await _build_job_and_accept(runtime, ctx, env, submit, name, version)
     if submit.idempotency_key is not None:
         runtime.idempotency.put(
             ctx.principal,
@@ -123,7 +128,7 @@ def _replay_idempotent(
     return True
 
 
-def _build_job_and_accept(  # noqa: PLR0913
+async def _build_job_and_accept(  # noqa: PLR0913
     runtime: ARCPRuntime,
     ctx: SessionContext,
     env: Envelope,
@@ -150,6 +155,8 @@ def _build_job_and_accept(  # noqa: PLR0913
         submitter_principal=ctx.principal,
     )
     runtime._jobs[job_id] = job
+    credentials = await _issue_credentials(runtime, ctx, submit, job)
+    job.credentials = credentials
     accepted = JobAcceptedPayload(
         job_id=job_id,
         agent=job.agent_ref,
@@ -160,6 +167,7 @@ def _build_job_and_accept(  # noqa: PLR0913
         parent_job_id=submit.parent_job_id,
         delegate_id=submit.delegate_id,
         trace_id=env.trace_id,
+        credentials=tuple(_credential_to_payload(c) for c in credentials) or None,
     )
     accept_env = Envelope(
         id=new_envelope_id(),
@@ -170,6 +178,64 @@ def _build_job_and_accept(  # noqa: PLR0913
         payload=accepted.model_dump(mode="json", exclude_none=True),
     )
     return job, accept_env
+
+
+async def _issue_credentials(
+    runtime: ARCPRuntime,
+    ctx: SessionContext,
+    submit: JobSubmitPayload,
+    job: Job,
+) -> tuple[Credential, ...]:
+    if runtime.credential_provisioner is None or not ctx.has_feature("provisioned_credentials"):
+        return ()
+    assert runtime.revocation_log is not None
+    provisioner_ctx = JobCredentialContext(
+        job_id=job.job_id,
+        agent=job.agent,
+        agent_version=job.agent_version,
+        submitter_principal=ctx.principal,
+        parent_job_id=job.parent_job_id,
+        lease=job.lease,
+        lease_constraints=job.lease_constraints,
+    )
+    credentials: tuple[Credential, ...] = ()
+    try:
+        credentials = await runtime.credential_provisioner.issue(
+            submit.lease_request, provisioner_ctx
+        )
+        for credential in credentials:
+            _credential_to_payload(credential)
+        for credential in credentials:
+            await runtime.revocation_log.record(job.job_id, credential.id)
+    except Exception as e:
+        runtime._jobs.pop(job.job_id, None)
+        for credential in credentials:
+            with contextlib.suppress(Exception):
+                await runtime.credential_provisioner.revoke(credential.id)
+        raise InternalError(f"credential provisioner failed: {e}") from e
+    return credentials
+
+
+def _credential_to_payload(credential: Credential) -> CredentialPayload:
+    constraints = None
+    if credential.constraints is not None:
+        constraints = CredentialConstraintsPayload.model_validate(
+            {
+                "cost.budget": credential.constraints.cost_budget,
+                "model.use": credential.constraints.model_use,
+                "expires_at": credential.constraints.expires_at,
+            }
+        )
+    if credential.scheme != "bearer":
+        raise ValueError("credential scheme must be 'bearer'")
+    return CredentialPayload(
+        id=credential.id,
+        scheme="bearer",
+        value=credential.value,
+        endpoint=credential.endpoint,
+        profile=credential.profile,
+        constraints=constraints,
+    )
 
 
 async def handle_cancel(runtime: ARCPRuntime, ctx: SessionContext, env: Envelope) -> None:

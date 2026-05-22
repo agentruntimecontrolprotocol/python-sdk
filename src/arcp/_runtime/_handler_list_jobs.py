@@ -72,6 +72,7 @@ def _matches_filter(job: Job, body: SessionListJobsPayload) -> bool:
 
 
 def _job_to_entry(j: Job) -> JobListEntry:
+    # Credentials are intentionally never echoed from list/introspection surfaces (§14).
     return JobListEntry(
         job_id=j.job_id,
         agent=j.agent_ref,

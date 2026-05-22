@@ -120,11 +120,13 @@ class SessionContext:
         for link in list(subs.values()):
             sub = link.subscriber_session
             link.next_seq += 1
+            payload = _redact_subscriber_payload(env.payload)
             forward = env.model_copy(
                 update={
                     "id": new_envelope_id(),
                     "session_id": sub.session_id,
                     "event_seq": link.next_seq,
+                    "payload": payload,
                 }
             )
             sub.stamp_and_enqueue(forward)
@@ -167,6 +169,18 @@ def make_session_state(  # noqa: PLR0913
         resume_window_sec=resume_window_sec,
         accepted_at=datetime.now(UTC),
     )
+
+
+def _redact_subscriber_payload(payload: dict[str, Any]) -> dict[str, Any]:
+    if (
+        payload.get("kind") != "status"
+        or not isinstance(payload.get("body"), dict)
+        or payload["body"].get("phase") != "credential_rotated"
+    ):
+        return payload
+    body = dict(payload["body"])
+    body.pop("value", None)
+    return {**payload, "body": body}
 
 
 async def write_pump(transport: Transport, queue: asyncio.Queue[Envelope | None]) -> None:
