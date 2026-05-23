@@ -5,9 +5,9 @@ The **Agent Runtime Control Protocol (ARCP)** Python SDK implements [ARCP v1.1](
 ## Install
 
 ```bash
-pip install arcp
+pip install agentruntimecontrolprotocol
 # or with uv:
-uv add arcp
+uv add agentruntimecontrolprotocol
 ```
 
 Requires Python 3.11+.
@@ -53,5 +53,5 @@ See [recipes.md](recipes.md) for a full index of runnable examples.
 
 - [ARCP Specification v1.1](https://arcp.dev/spec/v1.1)
 - [TypeScript SDK](https://github.com/agentruntimecontrolprotocol/typescript-sdk)
-- [PyPI: arcp](https://pypi.org/project/arcp/)
+- [PyPI: agentruntimecontrolprotocol](https://pypi.org/project/agentruntimecontrolprotocol/)
 - [Changelog](../CHANGELOG.md)

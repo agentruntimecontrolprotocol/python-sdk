@@ -1,5 +1,5 @@
 [project]
-name = "arcp"
+name = "agentruntimecontrolprotocol"
 version = "1.1.0"
 description = "Reference Python implementation of the Agent Runtime Control Protocol (ARCP) v1.1"
 readme = "README.md"

@@ -3,8 +3,8 @@
 <p align="center"><strong>Python SDK for the Agent Runtime Control Protocol (ARCP) — submit, observe, and control long-running agent jobs from Python.</strong></p>
 
 <p align="center">
-  <a href="https://pypi.org/project/arcp/"><img alt="PyPI" src="https://img.shields.io/pypi/v/arcp.svg"></a>
-  <a href="https://pypi.org/project/arcp/"><img alt="Python versions" src="https://img.shields.io/pypi/pyversions/arcp.svg"></a>
+  <a href="https://pypi.org/project/agentruntimecontrolprotocol/"><img alt="PyPI" src="https://img.shields.io/pypi/v/agentruntimecontrolprotocol.svg"></a>
+  <a href="https://pypi.org/project/agentruntimecontrolprotocol/"><img alt="Python versions" src="https://img.shields.io/pypi/pyversions/agentruntimecontrolprotocol.svg"></a>
   <a href="https://github.com/agentruntimecontrolprotocol/python-sdk/actions/workflows/test.yml"><img alt="CI" src="https://github.com/agentruntimecontrolprotocol/python-sdk/actions/workflows/test.yml/badge.svg"></a>
   <a href="https://github.com/agentruntimecontrolprotocol/spec/blob/main/docs/draft-arcp-1.1.md"><img alt="ARCP" src="https://img.shields.io/badge/ARCP-v1.1%20draft-blue"></a>
   <a href="LICENSE"><img alt="License" src="https://img.shields.io/badge/license-Apache--2.0-lightgrey"></a>
@@ -27,14 +27,14 @@ ARCP itself is a transport-agnostic wire protocol for long-running AI agent jobs
 
 ## Installation
 
-Requires Python 3.11 or later. The SDK ships as a single wheel containing the client, runtime, transports, ASGI/aiohttp middleware, the OpenTelemetry middleware, and the `arcp` CLI. Install from PyPI with `pip`, `uv`, or any PEP 517 resolver; the optional `jwks` extra pulls in `httpx` for remote JWKS verification.
+Requires Python 3.11 or later. The SDK is published on PyPI as `agentruntimecontrolprotocol` and imported as `arcp`. It ships as a single wheel containing the client, runtime, transports, ASGI/aiohttp middleware, the OpenTelemetry middleware, and the `arcp` CLI. Install from PyPI with `pip`, `uv`, or any PEP 517 resolver; the optional `jwks` extra pulls in `httpx` for remote JWKS verification.
 
 ```sh
-pip install arcp
+pip install agentruntimecontrolprotocol
 # or, with uv:
-uv add arcp
+uv add agentruntimecontrolprotocol
 # with the JWKS extra:
-pip install "arcp[jwks]"
+pip install "agentruntimecontrolprotocol[jwks]"
 ```
 
 ## Quick start

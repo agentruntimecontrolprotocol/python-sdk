@@ -5,7 +5,7 @@ This page walks you through a complete ARCP interaction in about five minutes: d
 ## Prerequisites
 
 ```bash
-pip install arcp
+pip install agentruntimecontrolprotocol
 ```
 
 Requires Python 3.11+.
