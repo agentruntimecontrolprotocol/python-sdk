@@ -19,7 +19,7 @@ Caller ──submit(budget=$1.00)──► Coordinator
 ## Prerequisites
 
 ```bash
-uv add agentruntimecontrolprotocol
+uv add arcp
 ```
 
 ## Implementation

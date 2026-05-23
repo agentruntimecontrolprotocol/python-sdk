@@ -1,11 +1,11 @@
 # CLI reference
 
-The `arcp` command-line tool is included with the `agentruntimecontrolprotocol` package. It provides subcommands for serving agents, submitting jobs, and inspecting event streams.
+The `arcp` command-line tool is included with the `arcp` package. It provides subcommands for serving agents, submitting jobs, and inspecting event streams.
 
 ## Installation
 
 ```bash
-pip install agentruntimecontrolprotocol
+pip install arcp
 # arcp is now on your PATH
 ```
 

@@ -17,7 +17,7 @@ streaming and asynchronous.  The adapter pattern here:
 ## Prerequisites
 
 ```bash
-uv add agentruntimecontrolprotocol mcp
+uv add arcp mcp
 ```
 
 ## Adapter

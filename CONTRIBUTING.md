@@ -132,7 +132,7 @@ the changelog. Prefer clarity over cleverness in a library others build on.
 
 Releases are cut by maintainers. Publishing is automated: pushing a `v*` tag
 triggers the `publish.yml` workflow, which builds the wheel with `hatch` and
-uploads it to [PyPI](https://pypi.org/project/agentruntimecontrolprotocol/) via OIDC trusted
+uploads it to [PyPI](https://pypi.org/project/arcp/) via OIDC trusted
 publishing. The SDK is versioned with semantic versioning independently of the
 protocol version it speaks; a protocol version bump is noted in the changelog
 when the negotiated ARCP version changes.
