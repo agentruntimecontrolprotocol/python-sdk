@@ -1,4 +1,4 @@
-"""§5.1 — `id` MUST be a ULID, UUIDv7, or prefixed ULID like `job_…`."""
+"""§5.1 — `id` MUST be a ULID, UUIDv7, or prefixed ULID like `job_...`."""
 
 from __future__ import annotations
 

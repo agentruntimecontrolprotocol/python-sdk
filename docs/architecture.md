@@ -15,7 +15,7 @@ arcp/
 ├── _version.py
 ├── _extensions.py       # Vendor extension helpers (§15)
 └── middleware/
-    ├── asgi.py          # ASGI adapter (FastAPI, Starlette, …)
+    ├── asgi.py          # ASGI adapter (FastAPI, Starlette, ...)
     ├── aiohttp.py       # aiohttp adapter
     └── otel.py          # OpenTelemetry span / metric export
 ```

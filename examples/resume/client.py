@@ -40,7 +40,7 @@ async def main() -> int:
     sid = welcome1.session_id
     # Drop transport WITHOUT calling client.close() so we don't send session.bye.
     await transport1.close()
-    print(f"first connection observed {seen} events; resume_token={token1[:8]}…")
+    print(f"first connection observed {seen} events; resume_token={token1[:8]}...")
 
     # Second connection: present SessionResume to the runtime.
     second = _new_client()
@@ -51,7 +51,7 @@ async def main() -> int:
             resume=SessionResume(session_id=sid, resume_token=token1, last_event_seq=last_seq),
         )
         token2 = welcome2.resume_token
-        print(f"resumed; new resume_token={token2[:8]}…")
+        print(f"resumed; new resume_token={token2[:8]}...")
         assert token2 != token1, "resume_token MUST rotate on every welcome"
     print("ok")
     return 0
