@@ -25,7 +25,7 @@ question.
 ## The golden rule: conform, don't extend
 
 A change to this SDK must keep it a faithful client of
-[ARCP v1.1](https://github.com/agentruntimecontrolprotocol/spec/blob/main/docs/draft-arcp-1.1.md).
+[ARCP v1.1 (draft)](https://github.com/agentruntimecontrolprotocol/spec/blob/main/docs/draft-arcp-1.1.md).
 Concretely:
 
 - **Don't invent wire behavior.** No envelope fields, event kinds, error codes,

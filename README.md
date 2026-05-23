@@ -1,258 +1,322 @@
-# ARCP — Agent Runtime Control Protocol (Python reference)
+<h3 align="center">ARCP Python SDK</h3>
 
-[![License: Apache-2.0](https://img.shields.io/badge/license-Apache--2.0-blue)](LICENSE)
-[![Python ≥ 3.11](https://img.shields.io/badge/python-%E2%89%A53.11-blue)](pyproject.toml)
-[![ARCP v1.1](https://img.shields.io/badge/arcp-v1.1-blue)](https://github.com/agentruntimecontrolprotocol/spec/blob/main/docs/draft-arcp-1.1.md)
+<p align="center"><strong>Python SDK for the Agent Runtime Control Protocol (ARCP) — submit, observe, and control long-running agent jobs from Python.</strong></p>
 
-Reference implementation of ARCP v1.1 for Python. The wire is defined
-in [the ARCP spec](https://github.com/agentruntimecontrolprotocol/spec/blob/main/docs/draft-arcp-1.1.md);
-this SDK is one of eleven implementations tracked in the workspace's
-per-SDK conformance pages.
+<p align="center">
+  <a href="https://pypi.org/project/arcp/"><img alt="PyPI" src="https://img.shields.io/pypi/v/arcp.svg"></a>
+  <a href="https://pypi.org/project/arcp/"><img alt="Python versions" src="https://img.shields.io/pypi/pyversions/arcp.svg"></a>
+  <a href="https://github.com/agentruntimecontrolprotocol/python-sdk/actions/workflows/test.yml"><img alt="CI" src="https://github.com/agentruntimecontrolprotocol/python-sdk/actions/workflows/test.yml/badge.svg"></a>
+  <a href="https://github.com/agentruntimecontrolprotocol/spec/blob/main/docs/draft-arcp-1.1.md"><img alt="ARCP" src="https://img.shields.io/badge/ARCP-v1.1%20draft-blue"></a>
+  <a href="LICENSE"><img alt="License" src="https://img.shields.io/badge/license-Apache--2.0-lightgrey"></a>
+</p>
 
-## Install
+<p align="center">
+  <a href="https://github.com/agentruntimecontrolprotocol/spec/blob/main/docs/draft-arcp-1.1.md">Specification</a> ·
+  <a href="#concepts">Concepts</a> ·
+  <a href="#installation">Install</a> ·
+  <a href="#quick-start">Quick start</a> ·
+  <a href="docs/">Guides</a> ·
+  <a href="docs/">API reference</a>
+</p>
 
-```sh
-uv add arcp
-```
+---
+
+`arcp` is the Python reference implementation of [ARCP](https://github.com/agentruntimecontrolprotocol/spec/blob/main/docs/draft-arcp-1.1.md), the Agent Runtime Control Protocol. It covers both sides of the wire — `arcp.client.ARCPClient` for submitting and observing jobs, `arcp.runtime.ARCPRuntime` for hosting agents — so either side can talk to any conformant peer in any language without hand-rolling the envelope, sequencing, or lease enforcement.
+
+ARCP itself is a transport-agnostic wire protocol for long-running AI agent jobs. It owns the parts of agent infrastructure that don't change between products — sessions, durable event streams, capability leases, budgets, resume — and stays out of the parts that do. ARCP wraps the agent function; it does not define how agents are built, how tools are exposed (that's MCP), or how telemetry is exported (that's OpenTelemetry).
+
+## Installation
+
+Requires Python 3.11 or later. The SDK ships as a single wheel containing the client, runtime, transports, ASGI/aiohttp middleware, the OpenTelemetry middleware, and the `arcp` CLI. Install from PyPI with `pip`, `uv`, or any PEP 517 resolver; the optional `jwks` extra pulls in `httpx` for remote JWKS verification.
 
 ```sh
 pip install arcp
+# or, with uv:
+uv add arcp
+# with the JWKS extra:
+pip install "arcp[jwks]"
 ```
 
-The Python SDK ships as a single distribution. Subpackages:
+## Quick start
 
-| Subpackage                  | What it contains                                                                            |
-| --------------------------- | ------------------------------------------------------------------------------------------- |
-| `arcp`                      | Top-level re-exports (`ARCPClient`, `ARCPRuntime`, `MemoryTransport`, `pair_memory_transports`, errors, version constants). |
-| `arcp.client`               | `ARCPClient`, `JobHandle`, `JobSubscription`, `AutoAckOptions`.                             |
-| `arcp.runtime`              | `ARCPRuntime`, `JobContext`, `SessionContext`, agent registry, lease helpers.               |
-| `arcp.transport`            | `Transport` protocol, `MemoryTransport`, `WebSocketTransport`, `StdioTransport`.            |
-| `arcp.middleware.asgi`      | `arcp_asgi_app(runtime, *, allowed_hosts)` for Starlette / FastAPI / Litestar / Quart.      |
-| `arcp.middleware.aiohttp`   | `arcp_aiohttp_handler(runtime)` and `serve_arcp_aiohttp(...)` for `aiohttp.web.Application`. |
-| `arcp.middleware.otel`      | `with_tracing(inner, *, tracer)` — W3C trace context + v1.1 span attrs (§11).               |
-
-All of the above ship in one wheel; no à-la-carte install.
-
-## Quickstart
+Connect to a runtime, submit a job, stream its events to completion:
 
 ```python
 import asyncio
-
-from arcp import (
-    ARCPClient, ClientInfo, RuntimeInfo, pair_memory_transports,
-)
-from arcp.runtime import ARCPRuntime, StaticBearerVerifier
-
-TOKEN = "demo"
-
-
-async def echo(input_value, ctx):
-    await ctx.log("info", "echo started")
-    return {"echoed": input_value}
-
-
-async def main() -> None:
-    runtime = ARCPRuntime(
-        runtime=RuntimeInfo(name="quickstart", version="1.1.0"),
-        bearer=StaticBearerVerifier({TOKEN: "me@example.com"}),
-    )
-    runtime.register_agent("echo", echo)
-
-    client_t, server_t = pair_memory_transports()
-
-    async with asyncio.TaskGroup() as tg:
-        tg.create_task(runtime.accept(server_t))
-
-        client = ARCPClient(
-            client=ClientInfo(name="quickstart-client", version="1.0.0"),
-            token=TOKEN,
-        )
-        await client.connect(client_t)
-        handle = await client.submit(agent="echo", input={"hi": 1})
-        result = await handle.done
-        print(result.result)
-        await client.close()
-
-
-asyncio.run(main())
-```
-
-The runnable two-process WebSocket variant is at
-[`examples/submit_and_stream/`](examples/submit_and_stream/).
-
-## Core concepts
-
-| Piece     | Spec | Module                   |
-| --------- | ---- | ------------------------ |
-| Envelope  | §5   | `arcp.Envelope`          |
-| Transport | §4   | `arcp.transport`         |
-| Session   | §6   | `arcp.runtime.SessionContext`, `arcp.client.ARCPClient` |
-| Job       | §7   | `arcp.runtime.Job`, `arcp.client.JobHandle` |
-| Event     | §8   | `arcp.runtime.JobContext` (emitters) |
-| Lease     | §9   | `arcp.runtime.validate_lease_op`, `LeaseConstraints` |
-| Delegation| §10  | `JobContext.delegate(...)` (recursive submit) |
-
-Cancellation: `client.cancel_job(job_id)` propagates as
-`asyncio.CancelledError` into the agent body; cleanup runs before the
-terminal `job.error` (`code: "CANCELLED"`) ships. Event payloads are
-discriminated unions on `payload.kind`, validated with pydantic v2.
-
-## v1.1 additions
-
-The nine v1.1 features negotiate per spec §6.2 (intersection of the
-client's `capabilities.features` with the runtime's, in client
-order): [`heartbeat`](docs/03-features/heartbeats.md),
-[`ack`](docs/03-features/event-ack.md),
-[`list_jobs`](docs/03-features/list-jobs.md),
-[`subscribe`](docs/03-features/subscribe.md),
-[`agent_versions`](docs/03-features/agent-versions.md),
-[`lease_expires_at`](docs/03-features/lease-expires-at.md),
-[`cost.budget`](docs/03-features/cost-budget.md),
-[`progress`](docs/03-features/progress.md),
-[`result_chunk`](docs/03-features/result-chunk.md). Features absent
-from the negotiated set behave as if unsupported on both sides; see
-[`docs/03-features/capability-negotiation.md`](docs/03-features/capability-negotiation.md).
-
-## Running the runtime
-
-### Programmatic
-
-```python
-import asyncio
-
-from arcp import RuntimeInfo, serve_websocket
-from arcp.runtime import ARCPRuntime, StaticBearerVerifier
-
-runtime = ARCPRuntime(
-    runtime=RuntimeInfo(name="my-runtime", version="1.1.0"),
-    bearer=StaticBearerVerifier({"tok": "me@example.com"}),
-)
-runtime.register_agent("echo", lambda inp, ctx: {"echoed": inp})
-
-
-async def main() -> None:
-    server = await serve_websocket(
-        runtime.accept, host="127.0.0.1", port=7777, path="/arcp",
-    )
-    async with server:
-        await server.serve_forever()
-
-
-asyncio.run(main())
-```
-
-To mount inside an existing ASGI app, use
-`arcp.middleware.asgi.arcp_asgi_app(runtime, allowed_hosts=[...])`
-on a WebSocket route.
-
-### CLI
-
-```sh
-uv run arcp serve   --host 127.0.0.1 --port 7777 \
-                    --token tok --principal me@example.com
-uv run arcp submit  --url ws://127.0.0.1:7777/arcp \
-                    --token tok --agent echo --input '{"hi":1}'
-uv run arcp tail    --url ws://127.0.0.1:7777/arcp \
-                    --token tok --job-id job_01J...
-uv run arcp replay  --db arcp.db --session sess_XYZ --after-seq 0
-```
-
-Commands are implemented in [`src/arcp/cli.py`](src/arcp/cli.py).
-
-## Writing clients
-
-```python
+import contextlib
 import os
-import asyncio
 
-from arcp import ARCPClient, ClientInfo, WebSocketTransport
+from arcp import ClientInfo, WebSocketTransport
+from arcp.client import ARCPClient
 
 
 async def main() -> None:
-    transport = await WebSocketTransport.connect("wss://runtime.example.com/arcp")
     client = ARCPClient(
-        client=ClientInfo(name="my-client", version="1.0.0"),
-        token=os.environ["TOKEN"],
+        client=ClientInfo(name="quickstart", version="1.0.0"),
+        token=os.environ["ARCP_TOKEN"],
     )
-    await client.connect(transport)
-    try:
+    async with contextlib.aclosing(client):
+        transport = await WebSocketTransport.connect("wss://runtime.example.com/arcp")
+        await client.connect(transport)
+
         handle = await client.submit(
-            agent="weekly-report",
-            input={"week": "2026-W19"},
+            agent="data-analyzer",
+            input={"dataset": "s3://example/sales.csv"},
             lease_request={"net.fetch": ["s3://example/**"]},
-            idempotency_key="weekly-report-2026-W19",
         )
         async for event in handle.events():
-            # elided: render event to stdout / UI
-            pass
+            print(f"[{event['kind']}]", event["body"])
+
         result = await handle.done
-        print(result.result)
-    finally:
-        await client.close()
+        print("final:", result.final_status, result.result)
 
 
 asyncio.run(main())
 ```
 
-`client.connect(transport)` performs the handshake and starts the
-read pump; `client.close()` sends `session.bye` (spec §6.7) and
-closes the transport. Cancellation propagates `asyncio.CancelledError`
-into `handle.done`.
+This is the whole shape of the SDK: open a session, submit work, consume an ordered event stream, get a terminal result or error. Everything below is detail on those four moves.
 
-## Conformance
+## Concepts
 
-Per-section status, with source citations, lives at
-[`docs/06-conformance.md`](docs/06-conformance.md). All v1.1
-normative requirements are implemented; the deferred items listed at
-the bottom of that page are intentional, not bugs.
+ARCP organizes everything around four concerns — **identity**, **durability**, **authority**, and **observability** — expressed through five core objects:
 
-## Examples
+- **Session** — a connection between a client and a runtime. A session carries identity (a bearer token), negotiates a feature set in a `hello`/`welcome` handshake, and is *resumable*: if the transport drops, you reconnect with a resume token and the runtime replays buffered events. Jobs outlive the session that started them. See [§6](https://github.com/agentruntimecontrolprotocol/spec/blob/main/docs/draft-arcp-1.1.md).
+- **Job** — one unit of agent work submitted into a session. A job has an identity, an optional idempotency key, a resolved agent version, and a lifecycle that ends in exactly one terminal state: `success`, `error`, `cancelled`, or `timed_out`. See [§7](https://github.com/agentruntimecontrolprotocol/spec/blob/main/docs/draft-arcp-1.1.md).
+- **Event** — the ordered, session-scoped stream a job emits: logs, thoughts, tool calls and results, status, metrics, artifact references, progress, and streamed result chunks. Events carry strictly monotonic sequence numbers so the stream survives reconnects gap-free. See [§8](https://github.com/agentruntimecontrolprotocol/spec/blob/main/docs/draft-arcp-1.1.md).
+- **Lease** — the authority a job runs under, expressed as capability grants (`fs.read`, `fs.write`, `net.fetch`, `tool.call`, `agent.delegate`, `cost.budget`, `model.use`). The runtime enforces the lease at every operation boundary; a job can never act outside it. Leases may carry a budget and an expiry, and may be subset and handed to sub-agents via delegation. See [§9](https://github.com/agentruntimecontrolprotocol/spec/blob/main/docs/draft-arcp-1.1.md).
+- **Subscription** — read-only attachment to a job started elsewhere (e.g. a dashboard watching a job a CLI submitted). A subscriber observes the live event stream but cannot cancel or mutate the job. Distinct from *resume*, which continues the original session and carries cancel authority. See [§7.6](https://github.com/agentruntimecontrolprotocol/spec/blob/main/docs/draft-arcp-1.1.md).
 
-Core (v1.0):
+The SDK models each of these as first-class objects; the rest of this README shows how.
 
-| Example                                   | What it shows                          |
-| ----------------------------------------- | -------------------------------------- |
-| [`submit-and-stream`](docs/04-examples/submit-and-stream.md) | Connect, submit, iterate events, close. |
-| [`delegate`](docs/04-examples/delegate.md)               | Parent agent submits a child job.      |
-| [`resume`](docs/04-examples/resume.md)                   | Reattach to a session and replay.      |
-| [`idempotent-retry`](docs/04-examples/idempotent-retry.md) | Same key → same `job_id`.            |
-| [`lease-violation`](docs/04-examples/lease-violation.md) | Authorize outside the granted lease.   |
-| [`cancel`](docs/04-examples/cancel.md)                   | `job.cancel` → terminal `CANCELLED`.   |
-| [`stdio`](docs/04-examples/stdio.md)                     | Child-process subagent over pipes.     |
-| [`vendor-extensions`](docs/04-examples/vendor-extensions.md) | `x-vendor.*` passthrough.            |
-| [`custom-auth`](docs/04-examples/custom-auth.md)         | Custom `BearerVerifier`.               |
+## Guides
 
-v1.1 features:
+### Sessions and resume
 
-| Example                                     | Feature           |
-| ------------------------------------------- | ----------------- |
-| [`heartbeat`](docs/04-examples/heartbeat.md)             | `heartbeat`        |
-| [`ack-backpressure`](docs/04-examples/ack-backpressure.md) | `ack`            |
-| [`list-jobs`](docs/04-examples/list-jobs.md)             | `list_jobs`        |
-| [`subscribe`](docs/04-examples/subscribe.md)             | `subscribe`        |
-| [`agent-versions`](docs/04-examples/agent-versions.md)   | `agent_versions`   |
-| [`lease-expires-at`](docs/04-examples/lease-expires-at.md) | `lease_expires_at` |
-| [`cost-budget`](docs/04-examples/cost-budget.md)         | `cost.budget`      |
-| [`progress`](docs/04-examples/progress.md)               | `progress`         |
-| [`result-chunk`](docs/04-examples/result-chunk.md)       | `result_chunk`     |
+Open a session, negotiate features, and reconnect transparently after a transport drop using the resume token — jobs keep running server-side while you're gone.
 
-Host integrations:
+```python
+import asyncio
+import contextlib
+import os
 
-| Example                                         | Host         |
-| ----------------------------------------------- | ------------ |
-| [`host-tracing`](docs/04-examples/host-tracing.md) | OpenTelemetry |
-| [`host-asgi`](docs/04-examples/host-asgi.md)       | Starlette / FastAPI |
-| [`host-aiohttp`](docs/04-examples/host-aiohttp.md) | aiohttp      |
+from arcp import ClientInfo, SessionResume, WebSocketTransport
+from arcp.client import ARCPClient
 
-## Development
+URL = "wss://runtime.example.com/arcp"
+TOKEN = os.environ["ARCP_TOKEN"]
 
-```sh
-uv sync                # install incl. dev extras
-uv run pytest          # tests/
-uv run ruff check      # lint + format check
-uv run pyright         # strict type check
+
+def new_client() -> ARCPClient:
+    return ARCPClient(
+        client=ClientInfo(name="resumable", version="1.0.0"),
+        token=TOKEN,
+    )
+
+
+async def main() -> None:
+    first = new_client()
+    transport1 = await WebSocketTransport.connect(URL)
+    welcome = await first.connect(transport1)
+    session_id = welcome.session_id
+    resume_token = welcome.resume_token
+
+    handle = await first.submit(agent="long-running", input={})
+    async for _ in handle.events():
+        if first.latest_event_seq >= 2:
+            break
+    last_seq = first.latest_event_seq
+
+    # Drop the transport without sending session.bye; the job keeps running.
+    await transport1.close()
+
+    second = new_client()
+    async with contextlib.aclosing(second):
+        transport2 = await WebSocketTransport.connect(URL)
+        await second.resume(
+            transport2,
+            resume=SessionResume(
+                session_id=session_id,
+                resume_token=resume_token,
+                last_event_seq=last_seq,
+            ),
+        )
+        # The runtime replays every event with seq > last_seq, then resumes live streaming.
+
+
+asyncio.run(main())
 ```
+
+### Submitting jobs
+
+Submit a job with an agent (optionally version-pinned as `name@version`), an input, and an optional lease request, idempotency key, and runtime limit.
+
+```python
+from datetime import UTC, datetime, timedelta
+
+from arcp import LeaseConstraints
+
+expires_at = (datetime.now(UTC) + timedelta(minutes=1)).isoformat().replace("+00:00", "Z")
+
+handle = await client.submit(
+    agent="weekly-report@2.1.0",
+    input={"week": "2026-W19"},
+    lease_request={"net.fetch": ["s3://reports/**"]},
+    lease_constraints=LeaseConstraints(expires_at=expires_at),
+    idempotency_key="weekly-report-2026-W19",
+    max_runtime_sec=300,
+)
+
+print("job_id =", handle.job_id)
+print("effective lease =", handle.lease)
+print("resolved agent =", handle.agent_ref)
+```
+
+### Consuming events
+
+Iterate the ordered event stream — `log`, `thought`, `tool_call`, `tool_result`, `status`, `metric`, `artifact_ref`, `progress`, `result_chunk` — and optionally acknowledge progress so the runtime can release buffered events early.
+
+```python
+from arcp import ClientInfo
+from arcp.client import ARCPClient, AutoAckOptions
+
+client = ARCPClient(
+    client=ClientInfo(name="ack-demo", version="1.0.0"),
+    token=TOKEN,
+    # Coalesced session.ack: send when 32+ events have accrued, at most every 250 ms.
+    auto_ack=AutoAckOptions(every_n=32, interval_sec=0.25),
+)
+
+handle = await client.submit(agent="chatty", input={})
+
+async for event in handle.events():
+    kind = event["kind"]
+    body = event["body"]
+    if kind == "log":
+        print(body.get("message"))
+    elif kind == "tool_call":
+        print("->", body.get("name"), body.get("arguments"))
+    elif kind == "metric":
+        print("metric", body)
+    elif kind == "progress":
+        print("progress", body)
+    # Or ack manually: await client.ack(client.latest_event_seq)
+```
+
+### Leases and budgets
+
+Request capabilities, a budget, and an expiry; read budget-remaining metrics as they arrive; handle the runtime's enforcement decisions.
+
+```python
+from datetime import UTC, datetime, timedelta
+
+from arcp import BudgetExhaustedError, LeaseConstraints, LeaseExpiredError
+
+expires_at = (datetime.now(UTC) + timedelta(minutes=10)).isoformat().replace("+00:00", "Z")
+
+handle = await client.submit(
+    agent="web-research",
+    input={"iterations": 8, "per_call_usd": 0.3},
+    lease_request={
+        "tool.call": ["search.*", "fetch.*"],
+        "cost.budget": ["USD:1.00"],
+    },
+    lease_constraints=LeaseConstraints(expires_at=expires_at),
+)
+
+print("initial budget =", handle.budget)
+
+try:
+    async for event in handle.events():
+        if event["kind"] == "metric" and event["body"].get("name") == "cost.budget.remaining":
+            body = event["body"]
+            print(f"budget remaining: {body['value']:.2f} {body.get('unit', '')}")
+    await handle.done
+except (BudgetExhaustedError, LeaseExpiredError) as err:
+    # Never retryable: resubmit with a fresh lease or budget instead.
+    print("job ended:", err.code, err.message)
+```
+
+### Subscribing to jobs
+
+Attach read-only to a job submitted elsewhere and observe its live stream (with optional history replay) without cancel authority.
+
+```python
+from arcp import ClientInfo, ListJobsFilter, WebSocketTransport
+from arcp.client import ARCPClient
+
+observer = ARCPClient(
+    client=ClientInfo(name="dashboard", version="1.0.0"),
+    token=TOKEN,
+    features=("list_jobs", "subscribe"),
+)
+await observer.connect(await WebSocketTransport.connect(URL))
+
+listing = await observer.list_jobs(filter=ListJobsFilter(status=("running",)))
+sub = await observer.subscribe(listing.jobs[0].job_id, history=True)
+print(f"subscribed from seq={sub.subscribed_from} replayed={sub.replayed}")
+
+async for event in sub.handle.events():
+    print(f"[seq>{sub.subscribed_from}] {event['kind']}")
+
+# ... later ...
+await observer.unsubscribe(sub.job_id)
+```
+
+### Error handling
+
+Catch the typed error taxonomy and respect the `retryable` flag — `LEASE_EXPIRED` and `BUDGET_EXHAUSTED` are never retryable; a naive retry fails identically.
+
+```python
+from arcp import ARCPError, BudgetExhaustedError, LeaseExpiredError
+
+try:
+    handle = await client.submit(agent="flaky", input={})
+    await handle.done
+except (LeaseExpiredError, BudgetExhaustedError):
+    # Resubmit with a fresh lease / budget instead of retrying.
+    raise
+except ARCPError as err:
+    if err.retryable:
+        # Safe to retry with backoff (e.g. INTERNAL_ERROR, TIMEOUT).
+        ...
+    else:
+        raise
+```
+
+## Feature support
+
+ARCP features this SDK negotiates during the `hello`/`welcome` handshake:
+
+| Feature flag | Status |
+|---|---|
+| `heartbeat` | Supported |
+| `ack` | Supported |
+| `list_jobs` | Supported |
+| `subscribe` | Supported |
+| `lease_expires_at` | Supported |
+| `cost.budget` | Supported |
+| `model.use` | Supported |
+| `provisioned_credentials` | Supported |
+| `progress` | Supported |
+| `result_chunk` | Supported |
+| `agent_versions` | Supported |
+
+## Transport
+
+ARCP is transport-agnostic. This SDK ships a WebSocket transport (default), an stdio transport for in-process child runtimes, and an in-memory transport for tests. WebSocket is the default for networked runtimes; stdio is used for in-process child runtimes. Select one by constructing the corresponding object (`WebSocketTransport.connect(url)`, `StdioTransport(...)`, `pair_memory_transports()`) and passing it to `client.connect(transport)`; the `arcp.middleware.asgi` and `arcp.middleware.aiohttp` packages attach the WebSocket upgrade to Starlette, FastAPI, Litestar, Quart, or `aiohttp.web` servers.
+
+## API reference
+
+Full API reference — every type, method, and event payload — is in [`docs/`](docs/).
+
+## Versioning and compatibility
+
+This SDK speaks **ARCP v1.1 (draft)**. The SDK follows semantic versioning independently of the protocol; the protocol version it negotiates is shown above and in `session.hello`. A runtime advertising a different ARCP MAJOR is not guaranteed compatible. Feature mismatches degrade gracefully: the effective feature set is the intersection of what the client and runtime advertise, and the SDK will not use a feature outside it.
+
+## Contributing
+
+See [`CONTRIBUTING.md`](CONTRIBUTING.md). Protocol questions and proposed changes belong in the [spec repository](https://github.com/agentruntimecontrolprotocol/spec); SDK bugs and feature requests belong here.
 
 ## License
 
-[Apache-2.0](LICENSE).
+Apache-2.0 — see [`LICENSE`](LICENSE).
