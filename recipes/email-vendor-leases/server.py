@@ -55,8 +55,20 @@ TOOLS = [
 
 # stand-in inbox so the recipe is self-contained — swap for IMAP/Gmail in real use
 INBOX = {
-    "m1": {"id": "m1", "from": "ops@acme.dev", "subject": "Status", "body": "All quiet.", "urgency": "low"},
-    "m2": {"id": "m2", "from": "ceo@acme.dev", "subject": "Outage!", "body": "Site is down — fix asap.", "urgency": "high"},
+    "m1": {
+        "id": "m1",
+        "from": "ops@acme.dev",
+        "subject": "Status",
+        "body": "All quiet.",
+        "urgency": "low",
+    },
+    "m2": {
+        "id": "m2",
+        "from": "ceo@acme.dev",
+        "subject": "Outage!",
+        "body": "Site is down — fix asap.",
+        "urgency": "high",
+    },
 }
 
 

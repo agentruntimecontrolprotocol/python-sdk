@@ -36,9 +36,7 @@ async def long_form(input: dict, ctx: JobContext) -> None:
     completion = await glm.chat.completions.create(
         model="glm-5",
         stream=True,
-        messages=[
-            {"role": "user", "content": f"Write a 2000-word article on: {input['topic']}"}
-        ],
+        messages=[{"role": "user", "content": f"Write a 2000-word article on: {input['topic']}"}],
     )
 
     buf = ""
