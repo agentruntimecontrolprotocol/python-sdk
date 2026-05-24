@@ -69,7 +69,7 @@ async def submit_job(  # noqa: PLR0913
         trace_id=trace_id,
         payload=submit.model_dump(mode="json", exclude_none=True),
     )
-    accept_fut: asyncio.Future[JobAcceptedPayload] = asyncio.get_event_loop().create_future()
+    accept_fut: asyncio.Future[JobAcceptedPayload] = asyncio.get_running_loop().create_future()
     client._pending_accepts.append(accept_fut)
     await client._transport.send(env.to_wire())
     try:

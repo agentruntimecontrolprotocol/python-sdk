@@ -57,7 +57,7 @@ async def _accept_or_close(runtime: ARCPRuntime, transport: Transport) -> Sessio
 def _maybe_start_heartbeat(ctx: SessionContext) -> asyncio.Task[Any] | None:
     if not (ctx.has_feature("heartbeat") and ctx.state.heartbeat_interval_sec):
         return None
-    ctx.heartbeat_outcome = asyncio.get_event_loop().create_future()
+    ctx.heartbeat_outcome = asyncio.get_running_loop().create_future()
     return asyncio.create_task(
         heartbeat_loop(ctx, interval=float(ctx.state.heartbeat_interval_sec))
     )

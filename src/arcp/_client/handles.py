@@ -25,7 +25,7 @@ class JobHandle:
         self.accepted = accepted
         self._events: asyncio.Queue[dict[str, Any] | None] = asyncio.Queue()
         self._chunks: asyncio.Queue[dict[str, Any] | None] = asyncio.Queue()
-        loop = asyncio.get_event_loop()
+        loop = asyncio.get_running_loop()
         self._terminal: asyncio.Future[JobResultPayload] = loop.create_future()
 
     @property
