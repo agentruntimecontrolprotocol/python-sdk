@@ -7,7 +7,7 @@ client to surface `HEARTBEAT_LOST` and a `session.error` close.
 Source: [`../../examples/heartbeat/`](../../examples/heartbeat/).
 
 ```sh
-uv run python -m examples.heartbeat.runtime &
+uv run python -m examples.heartbeat.server &
 uv run python -m examples.heartbeat.client
 ```
 

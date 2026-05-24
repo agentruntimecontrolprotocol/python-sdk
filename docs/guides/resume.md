@@ -8,7 +8,7 @@ If a connection drops while a job is running, the client can **resume** the even
 
 1. The runtime emits a `job.started` event containing a `resume_token`.
 2. The client stores the token and the last acknowledged `event_seq`.
-3. If the connection drops, the client reconnects and calls `submit()` again with `resume_token=...`.
+3. If the connection drops, the client reconnects and calls `client.resume(..., resume=SessionResume(...))`.
 4. The runtime replays events from `event_seq + 1` onward.
 
 The job itself is **not** re-executed. Only the event stream is replayed.

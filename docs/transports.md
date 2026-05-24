@@ -18,12 +18,13 @@ class Transport(Protocol):
 The fastest option — no sockets, no serialisation overhead. Use it in tests and single-process demos.
 
 ```python
-from arcp import pair_memory_transports
+from arcp import ARCPClient, ClientInfo, pair_memory_transports
 
 client_t, server_t = pair_memory_transports()
 
 async with asyncio.TaskGroup() as tg:
     tg.create_task(runtime.accept(server_t))
+    client = ARCPClient(client=ClientInfo(name="my-client", version="1.0.0"), token=TOKEN)
     await client.connect(client_t)
 ```
 
@@ -47,11 +48,10 @@ app.add_middleware(ARCPMiddleware, runtime=runtime)
 **Client**:
 
 ```python
-from arcp import ARCPClient, ClientInfo
-from arcp.transport import WebSocketClientTransport
+from arcp import ARCPClient, ClientInfo, WebSocketTransport
 
 client = ARCPClient(client=ClientInfo(name="my-client", version="1.0.0"), token=TOKEN)
-await client.connect(WebSocketClientTransport("ws://localhost:8000/arcp"))
+await client.connect(WebSocketTransport.connect("ws://localhost:8000/arcp"))
 ```
 
 See the [host-asgi recipe](recipes/host-asgi.md) for a runnable server.
@@ -63,19 +63,19 @@ For subprocess-based runtimes. The parent process spawns a child; the child read
 **Parent (client side)**:
 
 ```python
-from arcp.transport import StdioClientTransport
+from arcp import StdioTransport
 
-transport = await StdioClientTransport.spawn(["python", "-m", "my_agent_server"])
+transport = await StdioTransport.spawn(["python", "-m", "my_agent_server"])
 await client.connect(transport)
 ```
 
 **Child (server side)** — in `my_agent_server/__main__.py`:
 
 ```python
-from arcp.transport import StdioServerTransport
+from arcp import StdioTransport
 
 async def main():
-    transport = StdioServerTransport()
+    transport = StdioTransport()
     await runtime.accept(transport)
 
 asyncio.run(main())

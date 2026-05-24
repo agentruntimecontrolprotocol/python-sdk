@@ -49,7 +49,7 @@ client = ARCPClient(..., token="valid-token")
 
 ### `LeaseExceededError: lease.exceeded`
 
-**Cause:** The job called `ctx.report_cost(amount)` and the running total exceeded `lease_request["max_cost_usd"]`.
+**Cause:** The job emitted a cost metric via `ctx.metric(...)` and the running total exceeded `lease_request["max_cost_usd"]`.
 
 **Fix:** Either raise the budget in `lease_request` or reduce cost reporting in the agent.
 
@@ -57,7 +57,7 @@ client = ARCPClient(..., token="valid-token")
 
 **Cause:** The connection dropped and stream resume was not configured.
 
-**Fix:** Pass a `resume_token` from the `job.started` event to a new `submit()` call. See [Stream resume guide](guides/resume.md).
+**Fix:** Pass the current `resume_token` from the session handshake to a new `submit()` call. See [Stream resume guide](guides/resume.md).
 
 ### `RuntimeError: TaskGroup already finished`
 

@@ -9,7 +9,7 @@ without an external collector.
 Source: [`../../examples/host_tracing/`](../../examples/host_tracing/).
 
 ```sh
-uv run python -m examples.host_tracing.runtime &
+uv run python -m examples.host_tracing.server &
 uv run python -m examples.host_tracing.client
 ```
 

@@ -8,7 +8,7 @@ authentication and the rest of the protocol.
 Source: [`../../examples/custom_auth/`](../../examples/custom_auth/).
 
 ```sh
-uv run python -m examples.custom_auth.runtime &
+uv run python -m examples.custom_auth.server &
 uv run python -m examples.custom_auth.client
 ```
 

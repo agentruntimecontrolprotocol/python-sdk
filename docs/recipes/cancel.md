@@ -8,7 +8,7 @@ terminal envelope ships.
 Source: [`../../examples/cancel/`](../../examples/cancel/).
 
 ```sh
-uv run python -m examples.cancel.runtime &
+uv run python -m examples.cancel.server &
 uv run python -m examples.cancel.client
 ```
 

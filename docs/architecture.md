@@ -142,20 +142,19 @@ Clients can pin to a specific agent version:
 
 ```python
 handle = await client.submit(
-    agent="summarise",
+    agent="summarise@2",
     input={"url": "https://example.com"},
-    agent_version="2",
 )
 ```
 
 Runtimes register versioned agents:
 
 ```python
-runtime.register_agent("summarise", summarise_v1, version="1")
-runtime.register_agent("summarise", summarise_v2, version="2")
+runtime.register_agent_version("summarise", "1", summarise_v1)
+runtime.register_agent_version("summarise", "2", summarise_v2)
 ```
 
-If the client omits `agent_version`, the runtime uses the latest registered version.
+If the client omits the version suffix, the runtime uses the latest registered version.
 
 ## Middleware
 

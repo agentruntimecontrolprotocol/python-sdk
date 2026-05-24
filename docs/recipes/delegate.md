@@ -8,7 +8,7 @@ delegation composes the recursive case of jobs / events / leases.
 Source: [`../../examples/delegate/`](../../examples/delegate/).
 
 ```sh
-uv run python -m examples.delegate.runtime &
+uv run python -m examples.delegate.server &
 uv run python -m examples.delegate.client
 ```
 

@@ -13,49 +13,47 @@ pip install arcp
 
 ### `arcp serve`
 
-Start an ARCP runtime serving agents from a Python module.
+Run the built-in demo runtime.
 
 ```bash
-arcp serve my_module:runtime --host 0.0.0.0 --port 8080
+arcp serve --token demo-token --principal cli-user
 ```
 
 **Arguments:**
 
 | Argument | Default | Description |
 |---|---|---|
-| `MODULE:ATTR` | required | Python import path to an `ARCPRuntime` instance |
 | `--host` | `127.0.0.1` | Bind address |
-| `--port` | `8080` | Bind port |
-| `--reload` | off | Auto-reload on file changes (dev only) |
+| `--port` | `7777` | Bind port |
+| `--token` | required | Demo bearer token to accept |
+| `--principal` | `cli-user` | Principal bound to the accepted token |
+| `--db` | off | Optional SQLite event log path |
 
 ### `arcp submit`
 
 Submit a job to a running runtime and print the result.
 
 ```bash
-arcp submit ws://localhost:8080/arcp summarise '{"url":"https://example.com"}' \
-  --token my-bearer-token
+arcp submit --url ws://localhost:7777/arcp --agent echo \
+  --input '{"url":"https://example.com"}' --token my-bearer-token
 ```
 
 **Arguments:**
 
 | Argument | Description |
 |---|---|
-| `URL` | WebSocket URL of the runtime |
-| `AGENT` | Agent name |
-| `INPUT` | JSON-encoded input (use `@file.json` to read from file) |
+| `--url` | WebSocket URL of the runtime |
+| `--agent` | Agent name |
+| `--input` | JSON-encoded input |
 | `--token` | Bearer token |
-| `--lease-max-cost` | Maximum spend in USD (e.g. `0.10`) |
-| `--lease-expires-in` | Maximum wall time in seconds |
-| `--idempotency-key` | Idempotency key |
-| `--stream` | Print result chunks as they arrive |
+| `--lease` | Lease JSON object |
 
 ### `arcp tail`
 
 Tail the event stream for a job in real time.
 
 ```bash
-arcp tail ws://localhost:8080/arcp JOB_ID --token my-bearer-token
+arcp tail --url ws://localhost:7777/arcp --job-id JOB_ID --token my-bearer-token
 ```
 
 Prints each `JobEvent` as a JSON line. Press `Ctrl-C` to stop.
@@ -65,30 +63,7 @@ Prints each `JobEvent` as a JSON line. Press `Ctrl-C` to stop.
 Replay a recorded event stream from a JSONL file.
 
 ```bash
-arcp replay events.jsonl
+arcp replay --db events.sqlite --session SESSION_ID
 ```
 
-Useful for debugging: record a live stream with `arcp tail --output events.jsonl`, then replay it offline.
-
-## Environment variables
-
-All CLI options can also be set via environment variables:
-
-| Variable | CLI equivalent |
-|---|---|
-| `ARCP_TOKEN` | `--token` |
-| `ARCP_HOST` | `arcp serve --host` |
-| `ARCP_PORT` | `arcp serve --port` |
-
-## Shell completion
-
-```bash
-# bash
-arcp --install-completion bash
-
-# zsh
-arcp --install-completion zsh
-
-# fish
-arcp --install-completion fish
-```
+Useful for debugging: record a live stream from `tail` and replay it from the SQLite event log.

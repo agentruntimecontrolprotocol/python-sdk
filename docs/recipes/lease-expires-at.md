@@ -7,7 +7,7 @@ sleeps past the deadline and the next `ctx.authorize(...)` raises
 Source: [`../../examples/lease_expires_at/`](../../examples/lease_expires_at/).
 
 ```sh
-uv run python -m examples.lease_expires_at.runtime &
+uv run python -m examples.lease_expires_at.server &
 uv run python -m examples.lease_expires_at.client
 ```
 

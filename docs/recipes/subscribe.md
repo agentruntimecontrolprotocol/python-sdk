@@ -7,7 +7,7 @@ replays the prior events before continuing live.
 Source: [`../../examples/subscribe/`](../../examples/subscribe/).
 
 ```sh
-uv run python -m examples.subscribe.runtime &
+uv run python -m examples.subscribe.server &
 uv run python -m examples.subscribe.submitter &
 uv run python -m examples.subscribe.observer
 ```

@@ -7,7 +7,7 @@ asserts the reassembled bytes match the source.
 Source: [`../../examples/result_chunk/`](../../examples/result_chunk/).
 
 ```sh
-uv run python -m examples.result_chunk.runtime &
+uv run python -m examples.result_chunk.server &
 uv run python -m examples.result_chunk.client
 ```
 

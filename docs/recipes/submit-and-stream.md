@@ -10,7 +10,7 @@ Source: [`../../examples/submit_and_stream/`](../../examples/submit_and_stream/)
 Run the two-process WebSocket variant:
 
 ```sh
-uv run python -m examples.submit_and_stream.runtime &
+uv run python -m examples.submit_and_stream.server &
 uv run python -m examples.submit_and_stream.client
 ```
 
