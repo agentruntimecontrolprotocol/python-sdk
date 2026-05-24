@@ -8,7 +8,7 @@ since `last_event_seq` from its event log.
 Source: [`../../examples/resume/`](../../examples/resume/).
 
 ```sh
-uv run python -m examples.resume.runtime &
+uv run python -m examples.resume.server &
 uv run python -m examples.resume.client
 ```
 

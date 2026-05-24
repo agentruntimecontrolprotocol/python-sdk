@@ -8,7 +8,7 @@ pauses production and emits a `status` event with
 Source: [`../../examples/ack_backpressure/`](../../examples/ack_backpressure/).
 
 ```sh
-uv run python -m examples.ack_backpressure.runtime &
+uv run python -m examples.ack_backpressure.server &
 uv run python -m examples.ack_backpressure.client
 ```
 

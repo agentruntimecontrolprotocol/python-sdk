@@ -14,13 +14,13 @@ handle = await client.submit(
 )
 ```
 
-The agent reports costs via `ctx.report_cost(usd)`:
+The agent reports costs via `ctx.metric(...)`:
 
 ```python
 async def gpt_4_summary(input, ctx):
     response = await call_openai(input["text"])
     cost = response.usage.total_tokens * 0.00003
-    await ctx.report_cost(cost)
+    await ctx.metric({"name": "cost.openai", "value": cost, "unit": "USD"})
     return {"summary": response.text}
 ```
 

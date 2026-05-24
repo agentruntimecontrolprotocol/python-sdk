@@ -8,7 +8,7 @@ the lease validator path and the failure surface in `arcp._errors`.
 Source: [`../../examples/lease_violation/`](../../examples/lease_violation/).
 
 ```sh
-uv run python -m examples.lease_violation.runtime &
+uv run python -m examples.lease_violation.server &
 uv run python -m examples.lease_violation.client
 ```
 

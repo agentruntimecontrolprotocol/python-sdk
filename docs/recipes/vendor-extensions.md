@@ -7,7 +7,7 @@ contract: unknown `x-` fields pass through validators untouched.
 Source: [`../../examples/vendor_extensions/`](../../examples/vendor_extensions/).
 
 ```sh
-uv run python -m examples.vendor_extensions.runtime &
+uv run python -m examples.vendor_extensions.server &
 uv run python -m examples.vendor_extensions.client
 ```
 

@@ -23,9 +23,10 @@ print(result.result)
 | `input` | `dict` | Arbitrary JSON-serialisable payload |
 | `lease_request` | `dict` | Budget constraints (see [Leases](leases.md)) |
 | `idempotency_key` | `str` | Deduplicate re-submissions (see below) |
-| `agent_version` | `str` | Pin to a specific agent version |
-| `resume_token` | `str` | Resume an interrupted stream |
-| `resume_from_seq` | `int` | Replay from this event sequence number |
+| `lease_constraints` | `dict` | Optional absolute expiry and related constraints |
+| `max_runtime_sec` | `int` | Maximum runtime before timeout |
+| `trace_id` | `str` | Optional trace correlation id |
+| `parent_job_id` | `str` | Parent job for delegation or tracing |
 
 ## Registering an agent
 
@@ -47,13 +48,13 @@ The `ctx` object gives agents access to logging, progress, streaming, cost repor
 ```python
 async def my_agent(input, ctx):
     await ctx.log("info", "starting")
-    await ctx.progress(0, 100)
+    await ctx.progress(0, total=100)
 
     for i in range(10):
         chunk = await do_work(i)
         await ctx.result_chunk(chunk)
-        await ctx.progress((i + 1) * 10, 100)
-        await ctx.report_cost(0.001)  # USD
+        await ctx.progress((i + 1) * 10, total=100)
+        await ctx.metric({"name": "cost.inference", "value": 0.001, "unit": "USD"})
 
     return {"done": True}
 ```
@@ -61,9 +62,9 @@ async def my_agent(input, ctx):
 | Method | Description |
 |---|---|
 | `ctx.log(level, message)` | Emit a `job.log` event |
-| `ctx.progress(done, total)` | Emit a `job.progress` event |
+| `ctx.progress(current, total=..., units=..., message=...)` | Emit a `job.progress` event |
 | `ctx.result_chunk(chunk)` | Emit a `job.result_chunk` event |
-| `ctx.report_cost(usd)` | Accumulate cost against the lease |
+| `ctx.metric(body)` | Emit a `metric` event |
 | `ctx.principal` | The authenticated client identity |
 | `ctx.job_id` | The current job ID |
 | `ctx.session_id` | The current session ID |
@@ -85,7 +86,7 @@ async for event in handle.events():
 ```python
 handle = await client.submit(agent="slow", input={})
 await asyncio.sleep(1.0)
-await handle.cancel()
+await client.cancel_job(handle.job_id)
 # handle.done raises JobCancelledError
 ```
 

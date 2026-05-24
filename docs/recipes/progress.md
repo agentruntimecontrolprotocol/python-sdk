@@ -7,7 +7,7 @@ running tally before consuming the terminal `job.result`.
 Source: [`../../examples/progress/`](../../examples/progress/).
 
 ```sh
-uv run python -m examples.progress.runtime &
+uv run python -m examples.progress.server &
 uv run python -m examples.progress.client
 ```
 

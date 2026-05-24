@@ -7,7 +7,7 @@ The client submits three jobs against the same agent, then issues
 Source: [`../../examples/list_jobs/`](../../examples/list_jobs/).
 
 ```sh
-uv run python -m examples.list_jobs.runtime &
+uv run python -m examples.list_jobs.server &
 uv run python -m examples.list_jobs.client
 ```
 

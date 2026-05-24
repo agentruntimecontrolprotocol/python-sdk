@@ -8,7 +8,7 @@ idempotency store.
 Source: [`../../examples/idempotent_retry/`](../../examples/idempotent_retry/).
 
 ```sh
-uv run python -m examples.idempotent_retry.runtime &
+uv run python -m examples.idempotent_retry.server &
 uv run python -m examples.idempotent_retry.client
 ```
 

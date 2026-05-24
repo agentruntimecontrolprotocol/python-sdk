@@ -1,4 +1,4 @@
-"""ARCP wire envelope (spec §5.1): 8 fields, `arcp` constant, frozen pydantic model."""
+"""ARCP wire envelope (spec §5.1): 8 fields, `arcp` constant, mutable pydantic model."""
 
 from __future__ import annotations
 
@@ -24,7 +24,11 @@ def _is_valid_trace_id(value: str) -> bool:
 
 
 class Envelope(BaseModel):
-    """Outer envelope for every wire frame. 8 fields per spec §5.1."""
+    """Outer envelope for every wire frame. 8 fields per spec §5.1.
+
+    The model stays mutable so runtime code can stamp routing metadata
+    and copy envelopes with `model_copy(update=...)` when needed.
+    """
 
     model_config = ConfigDict(extra="allow", frozen=False, populate_by_name=True)
 

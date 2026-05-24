@@ -45,7 +45,7 @@ trace.set_tracer_provider(provider)
 | `arcp.jobs.active` | Gauge | Currently running jobs |
 | `arcp.jobs.total` | Counter | Total jobs submitted |
 | `arcp.job.duration_ms` | Histogram | Job wall-clock duration |
-| `arcp.job.cost_usd` | Histogram | Job cost (from `ctx.report_cost`) |
+| `arcp.job.cost_usd` | Histogram | Job cost (from `ctx.metric({"name": "cost.*", ...})`) |
 | `arcp.events.total` | Counter | Total events emitted |
 
 ## Propagating trace context
