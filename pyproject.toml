@@ -1,11 +1,26 @@
 [project]
 name = "agentruntimecontrolprotocol"
-version = "1.1.1"
+version = "1.1.2"
 description = "Reference Python implementation of the Agent Runtime Control Protocol (ARCP) v1.1"
 readme = "README.md"
 requires-python = ">=3.11"
 license = { text = "Apache-2.0" }
 authors = [{ name = "ARCP Reference" }]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: Apache Software License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3 :: Only",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Typing :: Typed",
+]
 # Core (always installed): everything `import arcp` and the `arcp` CLI
 # need out of the box — envelope, messages, transports (stdio,
 # in-memory, websocket), and the CLI replay tool. Heavier server-side
