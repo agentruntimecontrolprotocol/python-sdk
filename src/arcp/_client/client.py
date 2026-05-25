@@ -114,9 +114,7 @@ class ARCPClient:
         # The handle is created synchronously when `job.accepted` is dispatched
         # so any terminal arriving immediately after (e.g. idempotent replay)
         # can resolve it before the original `submit()` returns.
-        self._pending_accepts: dict[
-            str, asyncio.Future[tuple[JobAcceptedPayload, JobHandle]]
-        ] = {}
+        self._pending_accepts: dict[str, asyncio.Future[tuple[JobAcceptedPayload, JobHandle]]] = {}
         self._closed = False
         self._dispatch_cache: dict[str, Callable[[Envelope], Awaitable[None]]] | None = None
 
@@ -159,9 +157,7 @@ class ARCPClient:
         """
         return await self._handshake(transport, resume=None)
 
-    async def resume(
-        self, transport: Transport, *, resume: SessionResume
-    ) -> SessionWelcomePayload:
+    async def resume(self, transport: Transport, *, resume: SessionResume) -> SessionWelcomePayload:
         """Rejoin a previously-disconnected session.
 
         Sends `session.hello` with a `resume` block carrying the prior

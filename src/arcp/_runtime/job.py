@@ -226,9 +226,7 @@ class JobContext:
         # arithmetic does not lose precision through a float round-trip.
         raw_value = body.get("value", 0)
         try:
-            normalized = (
-                raw_value if isinstance(raw_value, Decimal) else Decimal(str(raw_value))
-            )
+            normalized = raw_value if isinstance(raw_value, Decimal) else Decimal(str(raw_value))
         except (InvalidOperation, ValueError) as exc:
             raise ValueError("metric.value must be a number or numeric string") from exc
         # Rewrite the body so downstream validation and the wire payload see a

@@ -222,9 +222,7 @@ async def _issue_credentials(
     if runtime.credential_provisioner is None or not ctx.has_feature("provisioned_credentials"):
         return ()
     if runtime.revocation_log is None:
-        raise InternalError(
-            "credential provisioner is configured but revocation_log is missing"
-        )
+        raise InternalError("credential provisioner is configured but revocation_log is missing")
     provisioner_ctx = JobCredentialContext(
         job_id=job.job_id,
         agent=job.agent,

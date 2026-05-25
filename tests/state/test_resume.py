@@ -47,9 +47,7 @@ async def test_resume_token_rotates_across_connections() -> None:
     await rt.close()
 
 
-async def _run_one_submit(
-    rt: ARCPRuntime, capabilities: Capabilities
-) -> tuple[str, str, int]:
+async def _run_one_submit(rt: ARCPRuntime, capabilities: Capabilities) -> tuple[str, str, int]:
     """Connect, submit one job, wait for result, drop transport. Return (session_id, resume_token, latest_seq)."""
     server_t, client_t = pair_memory_transports()
     accept_task = asyncio.create_task(rt.accept(server_t))

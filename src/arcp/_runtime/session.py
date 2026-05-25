@@ -206,9 +206,7 @@ async def write_pump(
             try:
                 await event_log.append(session_id, wire)
             except Exception:
-                _LOG.exception(
-                    "event_log_append_failed", session_id=session_id, type=item.type
-                )
+                _LOG.exception("event_log_append_failed", session_id=session_id, type=item.type)
         try:
             await transport.send(wire)
         except TransportClosed:

@@ -88,9 +88,7 @@ async def _perform_resume(  # noqa: PLR0913
     """
     record = runtime._pop_resumable(resume.session_id)
     if record is None:
-        raise PermissionDeniedError(
-            f"no resumable session for session_id={resume.session_id!r}"
-        )
+        raise PermissionDeniedError(f"no resumable session for session_id={resume.session_id!r}")
     if not hmac.compare_digest(record.resume_token, resume.resume_token):
         raise PermissionDeniedError("resume_token does not match")
     if record.principal != identity.principal:
@@ -121,9 +119,7 @@ async def _perform_resume(  # noqa: PLR0913
     ctx.stamp_and_enqueue(_build_welcome_envelope(runtime, ctx, welcome_caps, negotiated))
     # Replay everything strictly greater than `resume.last_event_seq` so the
     # peer rejoins exactly where it left off.
-    async for env_wire in runtime.event_log.read_since_seq(
-        ctx.session_id, resume.last_event_seq
-    ):
+    async for env_wire in runtime.event_log.read_since_seq(ctx.session_id, resume.last_event_seq):
         ctx.stamp_and_enqueue(Envelope.from_wire(env_wire))
     return ctx
 
