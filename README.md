@@ -28,20 +28,21 @@ ARCP itself is a transport-agnostic wire protocol for long-running AI agent jobs
 
 ## Installation
 
-Requires Python 3.11 or later. The package is published on PyPI as `agentruntimecontrolprotocol`; the import name stays `arcp`. The default install gives you the client, transports, and CLI out of the box — heavier server-side deps live behind extras so client-only users don't pull them in.
+Requires Python 3.11 or later. The package is published on PyPI as `agentruntimecontrolprotocol`; the import name stays `arcp`. The default install is the kitchen sink — client, runtime, transports, ASGI/aiohttp middleware, OpenTelemetry middleware, JWKS over HTTPS, and the `arcp` CLI — so everything works without thinking about extras.
 
 ```sh
-# client side — submit and observe jobs
+# everything (default)
 pip install agentruntimecontrolprotocol
 
-# runtime side — accept jobs, verify JWTs, persist event logs to sqlite
+# semantic intent markers (no-op extras — same deps as default,
+# but useful for documenting which side of the wire a service uses
+# in its lockfile or dependency manifest)
+pip install "agentruntimecontrolprotocol[client]"
 pip install "agentruntimecontrolprotocol[runtime]"
 
-# everything (runtime + otel + jwks)
-pip install "agentruntimecontrolprotocol[all]"
+# pytest stack for running the test suite
+pip install "agentruntimecontrolprotocol[test]"
 ```
-
-Other extras: `[otel]` for OpenTelemetry middleware, `[jwks]` for remote JWKS verification via `httpx`, `[test]` for the pytest stack used by the suite.
 
 ## Quick start
 

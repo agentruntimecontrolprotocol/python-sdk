@@ -8,33 +8,21 @@ resolution-markers = [
 
 [[package]]
 name = "agentruntimecontrolprotocol"
-version = "1.1.2"
+version = "1.1.3"
 source = { editable = "." }
 dependencies = [
+    { name = "aiosqlite" },
     { name = "click" },
+    { name = "httpx" },
+    { name = "opentelemetry-api" },
     { name = "pydantic" },
+    { name = "pyjwt", extra = ["crypto"] },
     { name = "python-ulid" },
     { name = "structlog" },
     { name = "websockets" },
 ]
 
 [package.optional-dependencies]
-all = [
-    { name = "aiosqlite" },
-    { name = "httpx" },
-    { name = "opentelemetry-api" },
-    { name = "pyjwt", extra = ["crypto"] },
-]
-jwks = [
-    { name = "httpx" },
-]
-otel = [
-    { name = "opentelemetry-api" },
-]
-runtime = [
-    { name = "aiosqlite" },
-    { name = "pyjwt", extra = ["crypto"] },
-]
 test = [
     { name = "aiohttp" },
     { name = "dirty-equals" },
@@ -69,19 +57,15 @@ dev = [
 [package.metadata]
 requires-dist = [
     { name = "aiohttp", marker = "extra == 'test'", specifier = ">=3.13.5" },
-    { name = "aiosqlite", marker = "extra == 'all'", specifier = ">=0.22.1" },
-    { name = "aiosqlite", marker = "extra == 'runtime'", specifier = ">=0.22.1" },
+    { name = "aiosqlite", specifier = ">=0.22.1" },
     { name = "click", specifier = ">=8.4.1" },
     { name = "dirty-equals", marker = "extra == 'test'", specifier = ">=0.11" },
-    { name = "httpx", marker = "extra == 'all'", specifier = ">=0.28.1" },
-    { name = "httpx", marker = "extra == 'jwks'", specifier = ">=0.28.1" },
+    { name = "httpx", specifier = ">=0.28.1" },
     { name = "hypothesis", marker = "extra == 'test'", specifier = ">=6.152.9" },
-    { name = "opentelemetry-api", marker = "extra == 'all'", specifier = ">=1.42.1,<2" },
-    { name = "opentelemetry-api", marker = "extra == 'otel'", specifier = ">=1.42.1,<2" },
+    { name = "opentelemetry-api", specifier = ">=1.42.1,<2" },
     { name = "opentelemetry-sdk", marker = "extra == 'test'", specifier = ">=1.42.1,<2" },
     { name = "pydantic", specifier = ">=2.13.4,<3" },
-    { name = "pyjwt", extras = ["crypto"], marker = "extra == 'all'", specifier = ">=2.13.0" },
-    { name = "pyjwt", extras = ["crypto"], marker = "extra == 'runtime'", specifier = ">=2.13.0" },
+    { name = "pyjwt", extras = ["crypto"], specifier = ">=2.13.0" },
     { name = "pytest", marker = "extra == 'test'", specifier = ">=9.0.3" },
     { name = "pytest-asyncio", marker = "extra == 'test'", specifier = ">=1.3.0" },
     { name = "pytest-cov", marker = "extra == 'test'", specifier = ">=7.1.0" },
@@ -92,7 +76,7 @@ requires-dist = [
     { name = "structlog", specifier = ">=25.5.0" },
     { name = "websockets", specifier = ">=16.0" },
 ]
-provides-extras = ["client", "runtime", "otel", "jwks", "test", "all"]
+provides-extras = ["client", "runtime", "otel", "jwks", "test"]
 
 [package.metadata.requires-dev]
 dev = [

@@ -1,6 +1,6 @@
 [project]
 name = "agentruntimecontrolprotocol"
-version = "1.1.2"
+version = "1.1.3"
 description = "Reference Python implementation of the Agent Runtime Control Protocol (ARCP) v1.1"
 readme = "README.md"
 requires-python = ">=3.11"
@@ -21,40 +21,34 @@ classifiers = [
     "Topic :: Software Development :: Libraries :: Python Modules",
     "Typing :: Typed",
 ]
-# Core (always installed): everything `import arcp` and the `arcp` CLI
-# need out of the box — envelope, messages, transports (stdio,
-# in-memory, websocket), and the CLI replay tool. Heavier server-side
-# deps live in extras below.
+# Default install: kitchen-sink. `pip install agentruntimecontrolprotocol`
+# pulls every dep the SDK can use — client transports, runtime
+# (sqlite + JWT), OpenTelemetry middleware, and JWKS over HTTPS — so
+# everything just works without thinking about extras.
 dependencies = [
     "pydantic>=2.13.4,<3",
     "structlog>=25.5.0",
     "python-ulid>=3.1.0",
     "websockets>=16.0",
     "click>=8.4.1",
+    "aiosqlite>=0.22.1",
+    "pyjwt[crypto]>=2.13.0",
+    "opentelemetry-api>=1.42.1,<2",
+    "httpx>=0.28.1",
 ]
 
 [project.optional-dependencies]
-# `pip install agentruntimecontrolprotocol[client]` — client side.
-# Everything you need is already in core; this extra exists for
-# symmetry with `[runtime]` and for forward compatibility.
+# Semantic intent markers. Python extras can only add deps, not
+# subtract — and the default install already pulls everything — so
+# these are no-ops at install time. They exist so `pip install
+# "agentruntimecontrolprotocol[client]"` documents the consumer's
+# intent in lockfiles and dependency manifests.
 client = []
-# `pip install agentruntimecontrolprotocol[runtime]` — required to
-# `import arcp.runtime`. Adds JWT bearer verification and sqlite-backed
-# event logs.
-runtime = [
-    "aiosqlite>=0.22.1",
-    "pyjwt[crypto]>=2.13.0",
-]
-# OpenTelemetry middleware (`arcp.middleware.otel`).
-otel = [
-    "opentelemetry-api>=1.42.1,<2",
-]
-# JWKS fetching for `JWTVerifier` over HTTPS.
-jwks = ["httpx>=0.28.1"]
-# `pip install agentruntimecontrolprotocol[test,all]` — enough to run
+runtime = []
+otel = []
+jwks = []
+# `pip install agentruntimecontrolprotocol[test]` — enough to run
 # `pytest --cov --cov-branch --cov-report=xml` against the full suite.
-# Pair with `[all]` so the runtime/jwks deps the integration tests reach
-# for are present.
 test = [
     "pytest>=9.0.3",
     "pytest-cov>=7.1.0",
@@ -66,13 +60,6 @@ test = [
     "aiohttp>=3.13.5",
     "starlette>=1.0.1",
     "opentelemetry-sdk>=1.42.1,<2",
-]
-# Everything — pulls in runtime + otel + jwks.
-all = [
-    "aiosqlite>=0.22.1",
-    "pyjwt[crypto]>=2.13.0",
-    "opentelemetry-api>=1.42.1,<2",
-    "httpx>=0.28.1",
 ]
 
 [dependency-groups]
