@@ -27,15 +27,11 @@ from arcp._runtime.lease import (
 
 
 def _future_iso(hours: int = 1) -> str:
-    return (
-        (dt.datetime.now(dt.UTC) + dt.timedelta(hours=hours)).isoformat().replace("+00:00", "Z")
-    )
+    return (dt.datetime.now(dt.UTC) + dt.timedelta(hours=hours)).isoformat().replace("+00:00", "Z")
 
 
 def _past_iso(hours: int = 1) -> str:
-    return (
-        (dt.datetime.now(dt.UTC) - dt.timedelta(hours=hours)).isoformat().replace("+00:00", "Z")
-    )
+    return (dt.datetime.now(dt.UTC) - dt.timedelta(hours=hours)).isoformat().replace("+00:00", "Z")
 
 
 # ---------------------------------------------------------------------------
