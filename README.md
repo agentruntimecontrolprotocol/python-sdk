@@ -6,7 +6,7 @@
   <a href="https://pypi.org/project/agentruntimecontrolprotocol/"><img alt="PyPI" src="https://img.shields.io/pypi/v/agentruntimecontrolprotocol.svg"></a>
   <a href="https://pypi.org/project/agentruntimecontrolprotocol/"><img alt="Python versions" src="https://img.shields.io/pypi/pyversions/agentruntimecontrolprotocol.svg"></a>
   <a href="https://github.com/agentruntimecontrolprotocol/python-sdk/actions/workflows/test.yml"><img alt="CI" src="https://github.com/agentruntimecontrolprotocol/python-sdk/actions/workflows/test.yml/badge.svg"></a>
-  <a href="https://codecov.io/gh/agentruntimecontrolprotocol/python-sdk"><img alt="codecov" src="https://codecov.io/gh/agentruntimecontrolprotocol/python-sdk/graph/badge.svg"></a>
+  <a href="https://codecov.io/gh/agentruntimecontrolprotocol/python-sdk"><img alt="codecov" src="https://codecov.io/gh/agentruntimecontrolprotocol/python-sdk/graph/badge.svg?token=RHW2K4B7C8"></a>
   <a href="https://github.com/agentruntimecontrolprotocol/spec/blob/main/docs/draft-arcp-1.1.md"><img alt="ARCP" src="https://img.shields.io/badge/ARCP-v1.1%20draft-blue"></a>
   <a href="LICENSE"><img alt="License" src="https://img.shields.io/badge/license-Apache--2.0-lightgrey"></a>
 </p>
