@@ -24,7 +24,15 @@ def _now_iso_z() -> str:
 
 
 class ResultStream:
-    """Async-context-manager writer for §8.4 chunked results."""
+    """Async-context-manager writer for §8.4 chunked results.
+
+    `result_size` on the terminal `job.result` envelope reports the byte
+    length of the *decoded application data* written through `write()`:
+    for `bytes` inputs it is `len(data)`, for `str` inputs it is the UTF-8
+    byte length. This makes `result_size` directly comparable to
+    `len(handle.collect_chunks())` on the client side regardless of whether
+    the payload travelled as base64 or utf8 on the wire.
+    """
 
     def __init__(self, ctx: JobContext, *, result_id: str) -> None:
         self._ctx = ctx
@@ -45,6 +53,8 @@ class ResultStream:
     ) -> None:
         if self._closed:
             raise InvalidRequestError("ResultStream already closed")
+        # Track size of decoded application data, not the encoded wire payload.
+        data_len = len(data) if isinstance(data, bytes) else len(data.encode("utf-8"))
         if isinstance(data, bytes):
             payload = base64.b64encode(data).decode("ascii")
             enc: Literal["utf8", "base64"] = "base64"
@@ -60,7 +70,7 @@ class ResultStream:
         }
         await self._ctx.result_chunk(body)
         self._chunk_seq += 1
-        self._total_size += len(payload.encode("utf-8"))
+        self._total_size += data_len
 
     async def close(self, *, summary: str | None = None) -> None:
         """Send a final `more=False` chunk (empty) and a terminal `job.result`."""

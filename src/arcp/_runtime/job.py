@@ -6,7 +6,7 @@ import asyncio
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, field, replace
 from datetime import UTC, datetime
-from decimal import Decimal
+from decimal import Decimal, InvalidOperation
 from typing import TYPE_CHECKING, Any, Literal
 
 from .._envelope import Envelope
@@ -60,22 +60,34 @@ class Job:
     chunked_result_started: bool = False
     inline_result_emitted: bool = False
     submitted_at: datetime = field(default_factory=lambda: datetime.now(UTC))
+    idempotency_key: str | None = None
+    # Wire dict of the most-recent terminal envelope (job.result / job.error)
+    # this job emitted; used by the idempotency store to replay terminals on
+    # duplicate submissions arriving after completion.
+    last_terminal_envelope: dict[str, Any] | None = None
     _last_budget_emit: dict[str, Decimal] = field(default_factory=dict)  # pyright: ignore[reportUnknownVariableType]
 
     @property
     def agent_ref(self) -> str:
         return f"{self.agent}@{self.agent_version}" if self.agent_version else self.agent
 
-    def apply_cost_metric(self, name: str, value: float, unit: str | None) -> Decimal | None:
-        """Decrement the per-currency counter and return the new remaining (or None)."""
+    def apply_cost_metric(
+        self, name: str, value: Decimal | float | int | str, unit: str | None
+    ) -> Decimal | None:
+        """Decrement the per-currency counter and return the new remaining (or None).
+
+        Accepts `value` as `Decimal | int | float | str` so callers can preserve
+        decimal precision through the budget arithmetic. Non-numeric strings
+        raise `ValueError`.
+        """
         if not name.startswith("cost.") or unit is None:
             return None
-        if value < 0:
+        delta = value if isinstance(value, Decimal) else Decimal(str(value))
+        if delta < 0:
             # spec §9.6: negative metrics MUST NOT decrement
             return None
         if unit not in self.budget:
             return None
-        delta = Decimal(str(value))
         self.budget[unit] = self.budget[unit] - delta
         return self.budget[unit]
 
@@ -111,9 +123,14 @@ class Job:
             trace_id=self.trace_id,
             payload=payload.model_dump(mode="json", exclude_none=True),
         )
-        self.state = payload.final_status if payload.final_status != "success" else "success"
+        # Note: `_finalize_failure`/`_finalize_cancelled` on the runner own
+        # the non-success transitions and may overwrite `state` after this.
+        self.state = payload.final_status
         if payload.result is not None:
             self.inline_result_emitted = True
+        # Stamp the terminal envelope *before* dispatching so any duplicate
+        # idempotent submit that races behind the write pump can replay it.
+        self.last_terminal_envelope = env.to_wire()
         await self.session.send(env)
 
     async def emit_error(self, payload: JobErrorPayload) -> None:
@@ -126,6 +143,8 @@ class Job:
             payload=payload.model_dump(mode="json", exclude_none=True),
         )
         self.state = "error"
+        # Stamp before dispatch (see emit_result note).
+        self.last_terminal_envelope = env.to_wire()
         await self.session.send(env)
 
 
@@ -203,12 +222,24 @@ class JobContext:
         await self.job.emit_event("status", body)
 
     async def metric(self, body: dict[str, Any]) -> None:
+        # Normalize the value once with Decimal precision so the budget
+        # arithmetic does not lose precision through a float round-trip.
+        raw_value = body.get("value", 0)
+        try:
+            normalized = (
+                raw_value if isinstance(raw_value, Decimal) else Decimal(str(raw_value))
+            )
+        except (InvalidOperation, ValueError) as exc:
+            raise ValueError("metric.value must be a number or numeric string") from exc
+        # Rewrite the body so downstream validation and the wire payload see a
+        # canonical JSON number (the spec wire format is a JSON number for
+        # metric.value; precision is preserved by the Decimal path above and
+        # by Job.budget which already holds Decimal counters).
+        body = {**body, "value": float(normalized)}
         validate_metric_body(body)
-        # Apply cost decrement before emission so a follow-up budget snapshot is fresh.
         name = str(body.get("name", ""))
-        value = float(body.get("value", 0))
         unit = body.get("unit") if isinstance(body.get("unit"), str) else None
-        remaining = self.job.apply_cost_metric(name, value, unit)
+        remaining = self.job.apply_cost_metric(name, normalized, unit)
         await self.job.emit_event("metric", body)
         if (
             remaining is not None

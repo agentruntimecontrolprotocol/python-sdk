@@ -3,13 +3,13 @@
 from __future__ import annotations
 
 import asyncio
-from collections import deque
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
 from typing import Any
 
 from .._envelope import Envelope
 from .._errors import (
+    InternalError,
     InvalidRequestError,
     error_from_payload,
 )
@@ -47,7 +47,27 @@ class AutoAckOptions:
 
 
 class ARCPClient:
-    """ARCP client: open/resume a session, submit jobs, observe events."""
+    """ARCP client: open/resume a session, submit jobs, observe events.
+
+    Construct once per connection. Call `await client.connect(transport)`
+    to open a new session, or `await client.resume(transport, resume=...)`
+    to rejoin an existing one. Submitted jobs are returned as `JobHandle`
+    instances whose `done` future resolves on the terminal `job.result` /
+    `job.error` envelope.
+
+    Args:
+        client: Identifies the calling application (name + version) — echoed
+            to the runtime for diagnostics.
+        token: Bearer token presented in the `session.hello` `auth` block.
+        capabilities: Optional override; defaults to all v1.1 features.
+        features: Convenience override for `capabilities.features` when
+            `capabilities` is `None`.
+        auto_ack: `True` for default coalesced acking, an explicit
+            `AutoAckOptions` for tuned behavior, or `False` (default) for
+            manual `client.ack(seq)` control.
+        handshake_timeout_sec: Bound on the `session.welcome` reply.
+        logger: Optional structlog-style logger (defaults to the package logger).
+    """
 
     def __init__(  # noqa: PLR0913
         self,
@@ -87,31 +107,75 @@ class ARCPClient:
         self._read_task: asyncio.Task[Any] | None = None
         self._auto_ack_task: asyncio.Task[Any] | None = None
         self._highest_seq: int = 0
-        self._pending_accepts: deque[asyncio.Future[JobAcceptedPayload]] = deque()
+        # Map submit-envelope-id → future of (accepted, handle). The runtime
+        # echoes the submit id on `job.accepted` as `request_id`, so
+        # concurrent submits resolve to the correct future. A FIFO fallback
+        # (used when the runtime omits `request_id`) keeps backward compat.
+        # The handle is created synchronously when `job.accepted` is dispatched
+        # so any terminal arriving immediately after (e.g. idempotent replay)
+        # can resolve it before the original `submit()` returns.
+        self._pending_accepts: dict[
+            str, asyncio.Future[tuple[JobAcceptedPayload, JobHandle]]
+        ] = {}
         self._closed = False
         self._dispatch_cache: dict[str, Callable[[Envelope], Awaitable[None]]] | None = None
 
     @property
     def negotiated_features(self) -> tuple[str, ...]:
+        """Features the runtime accepted during handshake (intersection of caps)."""
         return self._negotiated
 
     def has_feature(self, name: str) -> bool:
+        """Return True if `name` was negotiated this session."""
         return name in self._negotiated
 
     @property
     def session_id(self) -> str | None:
+        """Server-assigned session id, populated after `connect()`/`resume()`."""
         return self._session_id
 
     @property
     def welcome(self) -> SessionWelcomePayload | None:
+        """The full `session.welcome` payload returned by the runtime."""
         return self._welcome
 
     async def connect(self, transport: Transport) -> SessionWelcomePayload:
-        """Send `session.hello`, await `session.welcome`, start the read pump."""
+        """Open a fresh session over `transport`.
+
+        Sends `session.hello`, awaits `session.welcome`, and starts the
+        read pump (and auto-ack loop, if configured).
+
+        Returns:
+            The parsed `session.welcome` payload, including the issued
+            `session_id` and `resume_token`.
+
+        Raises:
+            ARCPError: If the runtime replies with `session.error` (the
+                exact subclass matches the error code).
+            InvalidRequestError: If the runtime replies with an unexpected
+                envelope type instead of `session.welcome`.
+            TimeoutError: If the welcome does not arrive within
+                `handshake_timeout_sec`.
+        """
         return await self._handshake(transport, resume=None)
 
-    async def resume(self, transport: Transport, *, resume: SessionResume) -> SessionWelcomePayload:
-        """Resume an existing session."""
+    async def resume(
+        self, transport: Transport, *, resume: SessionResume
+    ) -> SessionWelcomePayload:
+        """Rejoin a previously-disconnected session.
+
+        Sends `session.hello` with a `resume` block carrying the prior
+        `session_id`, `resume_token`, and `last_event_seq`. The runtime
+        replays any buffered envelopes past `last_event_seq` so the peer
+        rejoins exactly where it left off; the resume token is rotated.
+
+        Raises:
+            PermissionDeniedError: If the resume token or principal does
+                not match the original session, or the session has
+                expired its resume window.
+            ARCPError: Other server-side errors mapped from
+                `session.error` payloads.
+        """
         return await self._handshake(transport, resume=resume)
 
     async def _handshake(
@@ -148,7 +212,8 @@ class ARCPClient:
         return welcome
 
     async def _read_pump(self) -> None:
-        assert self._transport is not None
+        if self._transport is None:
+            raise InternalError("read pump started before connect()")
         try:
             while not self._closed:
                 raw = await self._transport.recv()
@@ -178,14 +243,16 @@ class ARCPClient:
         for h in list(self._handles.values()):
             h._reject_terminal(exc)  # pyright: ignore[reportPrivateUsage]
         self._handles.clear()
-        for fut in list(self._pending_accepts):
+        self._subscriptions.clear()
+        for fut in list(self._pending_accepts.values()):
             if not fut.done():
                 fut.set_exception(exc)
         self._pending_accepts.clear()
         self._pending.cancel_all(exc)
 
     async def _auto_ack_loop(self) -> None:
-        assert self.auto_ack is not None
+        if self.auto_ack is None:
+            raise InternalError("auto-ack loop started without auto_ack configured")
         last_acked = 0
         try:
             while not self._closed:
@@ -208,6 +275,31 @@ class ARCPClient:
         trace_id: str | None = None,
         parent_job_id: str | None = None,
     ) -> JobHandle:
+        """Submit a job and return a `JobHandle` once `job.accepted` arrives.
+
+        The handle exposes the terminal future (`handle.done`), event
+        iteration (`events()`), and chunked-result iteration (`chunks()`).
+
+        Args:
+            agent: Agent name, optionally with a version suffix
+                (`name@1.0.0`).
+            input: Arbitrary JSON-serializable payload passed to the agent.
+            lease_request: Lease attached to this job. Maps capability
+                namespace → glob pattern list (e.g. `{"net.fetch": ["https://*"]}`).
+            lease_constraints: Optional `expires_at` and related constraints.
+            idempotency_key: Per-principal key — duplicate submissions
+                with the same key return the same `job_id` and replay
+                the original terminal envelope when it has occurred.
+            max_runtime_sec: Server-side timeout for the agent body.
+            trace_id: W3C TraceContext id propagated on every envelope.
+            parent_job_id: Parent job id for delegation traces.
+
+        Raises:
+            ARCPError: Mapped from `session.error` (e.g. agent unknown,
+                lease invalid, duplicate idempotency conflict).
+            TimeoutError: If `job.accepted` does not arrive within
+                `handshake_timeout_sec`.
+        """
         # PLR0913: all kwargs map one-to-one onto a protocol payload's
         # optional fields. Bundling them in a dataclass for one operation
         # removes ergonomics with no clarity gain.
@@ -226,6 +318,11 @@ class ARCPClient:
         )
 
     async def cancel_job(self, job_id: str, *, reason: str = "client.cancel") -> None:
+        """Send `job.cancel` for `job_id`.
+
+        Only the original submitter may cancel; the runtime silently
+        ignores cancels from other principals (see §7.6 / §14).
+        """
         from .ops import cancel_job
 
         await cancel_job(self, job_id, reason=reason)
@@ -237,6 +334,15 @@ class ARCPClient:
         limit: int | None = None,
         cursor: str | None = None,
     ) -> SessionJobsPayload:
+        """List jobs visible under the runtime's authorization policy.
+
+        Returns a paged `SessionJobsPayload`. Pass `next_cursor` back as
+        `cursor` to continue.
+
+        Raises:
+            InvalidRequestError: If the `list_jobs` feature was not
+                negotiated this session.
+        """
         from .ops import list_jobs
 
         return await list_jobs(self, filter=filter, limit=limit, cursor=cursor)
@@ -248,30 +354,57 @@ class ARCPClient:
         history: bool = False,
         from_event_seq: int | None = None,
     ) -> JobSubscription:
+        """Subscribe to live events for `job_id`.
+
+        Args:
+            history: If True, replay buffered envelopes for the job
+                before live delivery resumes.
+            from_event_seq: Replay floor (exclusive). Only meaningful
+                with `history=True`.
+
+        Raises:
+            InvalidRequestError: If the `subscribe` feature was not
+                negotiated this session.
+            JobNotFoundError: If the runtime does not know `job_id`.
+            PermissionDeniedError: If the policy denies subscribing to
+                this job.
+        """
         from .ops import subscribe
 
         return await subscribe(self, job_id, history=history, from_event_seq=from_event_seq)
 
     async def unsubscribe(self, job_id: str) -> None:
+        """Cancel a live subscription opened with `subscribe(job_id)`.
+
+        Terminal envelopes for the job already end the subscription;
+        call this only to opt out *before* completion.
+        """
         from .ops import unsubscribe
 
         await unsubscribe(self, job_id)
 
     async def ack(self, last_processed_seq: int) -> None:
+        """Send `session.ack` so the runtime can release event log prefix.
+
+        No-op if the `ack` feature was not negotiated.
+        """
         from .ops import ack
 
         await ack(self, last_processed_seq)
 
     @property
     def latest_event_seq(self) -> int:
+        """Highest `event_seq` observed on this session (resume checkpoint)."""
         return self._highest_seq
 
     async def close(self, *, reason: str = "client.close") -> None:
+        """Send `session.bye`, close the transport, and fail any open handles."""
         from .ops import close_session
 
         await close_session(self, reason=reason)
 
     async def aclose(self) -> None:
+        """Alias for `close()` so `ARCPClient` works with `contextlib.aclosing`."""
         await self.close()
 
 

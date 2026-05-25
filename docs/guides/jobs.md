@@ -50,35 +50,46 @@ async def my_agent(input, ctx):
     await ctx.log("info", "starting")
     await ctx.progress(0, total=100)
 
-    for i in range(10):
-        chunk = await do_work(i)
-        await ctx.result_chunk(chunk)
-        await ctx.progress((i + 1) * 10, total=100)
-        await ctx.metric({"name": "cost.inference", "value": 0.001, "unit": "USD"})
+    async with ctx.stream_result() as stream:
+        for i in range(10):
+            await stream.write(await do_work(i))
+            await ctx.progress((i + 1) * 10, total=100)
+            await ctx.metric({"name": "cost.inference", "value": 0.001, "unit": "USD"})
 
     return {"done": True}
 ```
 
-| Method | Description |
+| Member | Description |
 |---|---|
-| `ctx.log(level, message)` | Emit a `job.log` event |
-| `ctx.progress(current, total=..., units=..., message=...)` | Emit a `job.progress` event |
-| `ctx.result_chunk(chunk)` | Emit a `job.result_chunk` event |
-| `ctx.metric(body)` | Emit a `metric` event |
-| `ctx.principal` | The authenticated client identity |
-| `ctx.job_id` | The current job ID |
-| `ctx.session_id` | The current session ID |
+| `ctx.log(level, message, attributes=...)` | Emit a `log` event (`level` ∈ `debug`/`info`/`warn`/`error`) |
+| `ctx.progress(current, *, total=..., units=..., message=...)` | Emit a `progress` event (`total` is keyword-only) |
+| `ctx.result_chunk(body)` | Emit one `result_chunk` event |
+| `ctx.stream_result()` | Open a `ResultStream` writer for chunked results |
+| `ctx.metric(body)` | Emit a `metric` event (cost.* automatically decrements budget) |
+| `ctx.status(phase, message=...)` | Emit a `status` event |
+| `ctx.tool_call(body)` / `ctx.tool_result(body)` | Emit MCP-style tool-call events |
+| `ctx.authorize(capability, target)` | Validate a lease op for `capability:target` |
+| `ctx.rotate_credential(id, new_value)` | Publish a credential rotation |
+| `ctx.budget` | Read-only snapshot of remaining `cost.budget` |
+| `ctx.lease` / `ctx.lease_constraints` | The lease attached to this job |
+| `ctx.job_id` / `ctx.session_id` / `ctx.trace_id` | Identity helpers |
+| `ctx.agent` / `ctx.agent_version` / `ctx.agent_ref` | Agent name + selected version |
 
 ## Streaming results
 
+The agent returns chunks through a `ResultStream`; the client consumes them via `JobHandle.chunks()` and joins on `JobHandle.done` for the terminal `job.result`.
+
 ```python
 handle = await client.submit(agent="stream", input={"n": 5})
-async for event in handle.events():
-    if event.kind == "job.result_chunk":
-        print(event.chunk)  # each chunk as it arrives
-    elif event.kind == "job.completed":
-        print("Final:", event.result)
-        break
+
+# Collect chunks as they arrive (each chunk is a dict from the wire body).
+async for chunk in handle.chunks():
+    print("chunk:", chunk)
+
+# All other event kinds (log, progress, metric, status, …) are surfaced on
+# `events()` and the terminal payload is awaited via `done`.
+result = await handle.done
+print("final:", result.result_size, "bytes")
 ```
 
 ## Cancellation
@@ -87,10 +98,12 @@ async for event in handle.events():
 handle = await client.submit(agent="slow", input={})
 await asyncio.sleep(1.0)
 await client.cancel_job(handle.job_id)
-# handle.done raises JobCancelledError
+# handle.done resolves to a JobResultPayload with final_status="cancelled".
+result = await handle.done
+assert result.final_status == "cancelled"
 ```
 
-Cancellation is cooperative: the runtime sends a cancellation signal and waits for the agent to finish its current operation. Agents can check `ctx.cancelled` to exit early.
+Cancellation is cooperative: the runtime cancels the running task, which surfaces in the agent coroutine as `asyncio.CancelledError`. Agents should let it propagate (or catch, clean up, and re-raise).
 
 ## Idempotency
 

@@ -74,10 +74,13 @@ Lease = dict[str, list[str]]
 
 
 def _ensure_utc_iso8601(value: str) -> datetime:
-    """Parse a strict UTC ISO 8601 timestamp (`Z` or `+00:00` only)."""
-    s = value.replace("Z", "+00:00")
+    """Parse a strict UTC ISO 8601 timestamp (`Z` or `+00:00` only).
+
+    Python 3.11+ `datetime.fromisoformat` accepts a trailing `Z` natively,
+    so no `Z` → `+00:00` rewrite is required.
+    """
     try:
-        dt = datetime.fromisoformat(s)
+        dt = datetime.fromisoformat(value)
     except ValueError as e:
         raise ValueError(f"invalid ISO 8601 timestamp: {value!r}") from e
     if dt.tzinfo is None or dt.utcoffset() != UTC.utcoffset(dt):
@@ -147,6 +150,11 @@ class JobAcceptedPayload(BaseModel):
     delegate_id: str | None = None
     trace_id: str | None = None
     credentials: tuple[CredentialPayload, ...] | None = None
+    # Optional: echoes the submitting `job.submit` envelope id so a client
+    # with concurrent submits can correlate the response to the exact request
+    # instead of relying on FIFO arrival order. Older runtimes that omit
+    # this field fall back to FIFO matching on the client.
+    request_id: str | None = None
 
 
 class JobCancelPayload(BaseModel):

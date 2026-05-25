@@ -53,8 +53,7 @@ def _now_iso() -> str:
     return datetime.now(UTC).isoformat().replace("+00:00", "Z")
 
 
-async def handle_ping(runtime: ARCPRuntime, ctx: SessionContext, env: Envelope) -> None:
-    _ = runtime  # unused
+async def handle_ping(_runtime: ARCPRuntime, ctx: SessionContext, env: Envelope) -> None:
     ping = SessionPingPayload.model_validate(env.payload)
     pong = SessionPongPayload(ping_nonce=ping.nonce, received_at=_now_iso())
     out = Envelope(
@@ -66,16 +65,27 @@ async def handle_ping(runtime: ARCPRuntime, ctx: SessionContext, env: Envelope) 
     ctx.stamp_and_enqueue(out)
 
 
-def handle_ack(runtime: ARCPRuntime, ctx: SessionContext, env: Envelope) -> None:
+async def handle_ack(runtime: ARCPRuntime, ctx: SessionContext, env: Envelope) -> None:
     if not ctx.has_feature("ack"):
         return
     ack = SessionAckPayload.model_validate(env.payload)
     ctx.record_ack(ack.last_processed_seq)
-    asyncio.create_task(runtime.event_log.release_through(ctx.session_id, ack.last_processed_seq))
+    # Await directly so (a) exceptions propagate to the dispatch loop instead
+    # of being lost on an orphan task and (b) successive acks for the same
+    # session are serialized — preventing concurrent DELETEs from racing.
+    try:
+        await runtime.event_log.release_through(ctx.session_id, ack.last_processed_seq)
+    except Exception:
+        # Surface but do not kill the session: a slow/locked disk should
+        # not break ack handling for unrelated future envelopes.
+        runtime.logger.exception(
+            "event_log_release_failed",
+            session_id=ctx.session_id,
+            through_seq=ack.last_processed_seq,
+        )
 
 
-async def handle_bye(runtime: ARCPRuntime, ctx: SessionContext, env: Envelope) -> None:
-    _ = runtime
+async def handle_bye(_runtime: ARCPRuntime, ctx: SessionContext, env: Envelope) -> None:
     SessionByePayload.model_validate(env.payload)
     await ctx.transport.close()
 
@@ -125,8 +135,27 @@ def _replay_idempotent(
         raise DuplicateKeyError(
             f"idempotency key {submit.idempotency_key!r} already used with different parameters"
         )
-    replay = Envelope.from_wire(entry.accepted_envelope)
-    ctx.stamp_and_enqueue(replay)
+    # Replay the accepted envelope so the duplicate caller receives a
+    # `JobHandle`. Stamp a fresh request_id so the client's correlation
+    # by request_id resolves the duplicate's submit future, not the original.
+    accepted_wire = dict(entry.accepted_envelope)
+    accepted_payload = dict(accepted_wire.get("payload", {}))
+    accepted_payload["request_id"] = env.id
+    accepted_wire["payload"] = accepted_payload
+    ctx.stamp_and_enqueue(Envelope.from_wire(accepted_wire))
+    # Prefer the entry's stored terminal envelope (set when the original
+    # job finished). Fall back to the live Job's `last_terminal_envelope`
+    # to cover the small window between terminal emission and the runner's
+    # finally block running `set_terminal`.
+    terminal_wire = entry.terminal_envelope
+    if terminal_wire is None:
+        job = runtime._jobs.get(entry.job_id)
+        if job is not None and job.last_terminal_envelope is not None:
+            terminal_wire = job.last_terminal_envelope
+    if terminal_wire is not None:
+        # Replay the terminal so the duplicate handle resolves promptly
+        # instead of hanging on a terminal that has already happened.
+        ctx.stamp_and_enqueue(Envelope.from_wire(terminal_wire))
     return True
 
 
@@ -155,6 +184,7 @@ async def _build_job_and_accept(  # noqa: PLR0913
         delegate_id=submit.delegate_id,
         trace_id=env.trace_id,
         submitter_principal=ctx.principal,
+        idempotency_key=submit.idempotency_key,
     )
     runtime._jobs[job_id] = job
     credentials = await _issue_credentials(runtime, ctx, submit, job)
@@ -170,6 +200,7 @@ async def _build_job_and_accept(  # noqa: PLR0913
         delegate_id=submit.delegate_id,
         trace_id=env.trace_id,
         credentials=tuple(_credential_to_payload(c) for c in credentials) or None,
+        request_id=env.id,
     )
     accept_env = Envelope(
         id=new_envelope_id(),
@@ -190,7 +221,10 @@ async def _issue_credentials(
 ) -> tuple[Credential, ...]:
     if runtime.credential_provisioner is None or not ctx.has_feature("provisioned_credentials"):
         return ()
-    assert runtime.revocation_log is not None
+    if runtime.revocation_log is None:
+        raise InternalError(
+            "credential provisioner is configured but revocation_log is missing"
+        )
     provisioner_ctx = JobCredentialContext(
         job_id=job.job_id,
         agent=job.agent,
@@ -248,7 +282,17 @@ async def handle_cancel(runtime: ARCPRuntime, ctx: SessionContext, env: Envelope
     if job is None:
         raise JobNotFoundError(f"unknown job_id: {env.job_id}")
     if job.submitter_principal != ctx.principal:
-        raise PermissionDeniedError("only the submitter may cancel this job")
+        # Cancel from a non-submitter (e.g. a subscriber on another session)
+        # is silently dropped per §7.6 / §14. Logging makes the audit trail
+        # visible without tearing down the requester's session with a
+        # session.error that would cascade and fail unrelated handles.
+        runtime.logger.warning(
+            "cancel_denied_non_submitter",
+            session_id=ctx.session_id,
+            principal=ctx.principal,
+            job_id=env.job_id,
+        )
+        return
     task = runtime._job_tasks.get(env.job_id)
     if task is not None and not task.done():
         task.cancel()

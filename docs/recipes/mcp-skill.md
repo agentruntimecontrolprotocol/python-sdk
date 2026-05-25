@@ -24,44 +24,37 @@ uv add arcp mcp
 
 ```python
 import asyncio
-import json
 from typing import Any
 
 from mcp import ClientSession, StdioServerParameters
 from mcp.client.stdio import stdio_client
 
-from arcp import ARCPRuntime, JobContext
-from arcp.auth import StaticBearerVerifier
-from arcp.transport import pair_memory_transports
+from arcp import (
+    ARCPClient,
+    ClientInfo,
+    RuntimeInfo,
+    pair_memory_transports,
+)
+from arcp.runtime import ARCPRuntime, StaticBearerVerifier
+from arcp._runtime.job import JobContext
 
 
 def make_mcp_skill(tool_name: str, server_params: StdioServerParameters):
     """Return an ARCP agent function that proxies *tool_name* on the MCP server."""
 
-    async def agent(ctx: JobContext) -> None:
-        # Collect arguments from the single-item input stream.
-        args: dict[str, Any] = {}
-        async for item in ctx.input_stream():
-            args.update(item)
-
-        # Connect to the MCP server and call the tool.
+    async def agent(arguments: dict[str, Any], ctx: JobContext) -> dict[str, Any]:
         async with stdio_client(server_params) as (read, write):
             async with ClientSession(read, write) as session:
                 await session.initialize()
-                result = await session.call_tool(tool_name, args)
+                result = await session.call_tool(tool_name, arguments)
 
-        # Emit MCP result content as ARCP result chunks.
-        for content_block in result.content:
-            if content_block.type == "text":
-                await ctx.emit_event(
-                    "result.chunk",
-                    {"text": content_block.text},
-                )
-            else:
-                await ctx.emit_event(
-                    "result.chunk",
-                    {"data": json.loads(content_block.model_dump_json())},
-                )
+        async with ctx.stream_result() as stream:
+            for content_block in result.content:
+                if content_block.type == "text":
+                    await stream.write(content_block.text)
+                else:
+                    await stream.write(content_block.model_dump_json())
+        return {"tool": tool_name}
 
     agent.__name__ = f"mcp_{tool_name}"
     return agent
@@ -79,8 +72,8 @@ fs_server = StdioServerParameters(
 server_transport, client_transport = pair_memory_transports()
 
 runtime = ARCPRuntime(
-    transport=server_transport,
-    auth=StaticBearerVerifier("secret"),
+    runtime=RuntimeInfo(name="mcp-bridge", version="1.0.0"),
+    bearer=StaticBearerVerifier({"secret": "principal-1"}),
 )
 runtime.register_agent("read_file", make_mcp_skill("read_file", fs_server))
 ```
@@ -88,24 +81,29 @@ runtime.register_agent("read_file", make_mcp_skill("read_file", fs_server))
 ## Client
 
 ```python
-from arcp import ARCPClient
+import asyncio
+from arcp import ARCPClient, ClientInfo
 
 
 async def main() -> None:
-    async with ARCPClient(client_transport, token="secret") as client:
-        handle = await client.submit(
-            agent="read_file",
-            input=[{"path": "/tmp/hello.txt"}],
-        )
+    asyncio.create_task(runtime.accept(server_transport))
+    client = ARCPClient(
+        client=ClientInfo(name="mcp-caller", version="1.0.0"),
+        token="secret",
+    )
+    await client.connect(client_transport)
+    handle = await client.submit(
+        agent="read_file",
+        input={"path": "/tmp/hello.txt"},
+    )
+    async for chunk in handle.chunks():
+        # `chunk` is the result_chunk wire body; `data` is the decoded text
+        # or base64 bytes (per `encoding`).
+        print(chunk.get("data"))
+    await handle.done
+    await client.close()
 
-        async for event in handle.events():
-            if event.kind == "result.chunk":
-                print(event.data.get("text", event.data))
 
-        await handle.done
-
-
-import asyncio
 asyncio.run(main())
 ```
 
@@ -121,18 +119,18 @@ for tool in TOOLS:
 ## Error propagation
 
 If the MCP tool raises, the exception propagates naturally and ARCP converts it
-to a `job.failed` event with an appropriate error code (spec
+to a `job.error` envelope with an appropriate error code (spec
 [§12](https://arcp.dev/spec/v1.1#section-12)).  You can also catch MCP errors
 explicitly and re-raise as typed ARCP exceptions:
 
 ```python
-from mcp.exceptions import McpError
-from arcp.errors import AgentError
+from mcp.shared.exceptions import McpError
+from arcp import InvalidRequestError
 
 try:
-    result = await session.call_tool(tool_name, args)
+    result = await session.call_tool(tool_name, arguments)
 except McpError as exc:
-    raise AgentError(str(exc)) from exc
+    raise InvalidRequestError(str(exc)) from exc
 ```
 
 ## Related

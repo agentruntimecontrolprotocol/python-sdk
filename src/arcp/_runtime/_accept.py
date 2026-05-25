@@ -5,10 +5,16 @@
 from __future__ import annotations
 
 import asyncio
-from typing import TYPE_CHECKING, Any
+import contextlib
+from typing import TYPE_CHECKING
 
 from .._envelope import Envelope
-from .._errors import ARCPError, InternalError, InvalidRequestError, UnauthenticatedError
+from .._errors import (
+    ARCPError,
+    HeartbeatLostError,
+    InternalError,
+    InvalidRequestError,
+)
 from .._messages.session import SessionErrorPayload
 from .._transport.base import Transport, TransportClosed
 from .._ulid import new_envelope_id
@@ -27,16 +33,30 @@ async def run_session(runtime: ARCPRuntime, transport: Transport) -> None:
     send_queue = ctx._send_queue
     try:
         async with asyncio.TaskGroup() as tg:
-            tg.create_task(write_pump(transport, send_queue))
-            _maybe_start_heartbeat(ctx)
+            tg.create_task(
+                write_pump(
+                    transport,
+                    send_queue,
+                    event_log=runtime.event_log,
+                    session_id=ctx.session_id,
+                )
+            )
+            _maybe_start_heartbeat(tg, ctx)
             tg.create_task(_read_pump(runtime, ctx))
     except* TransportClosed:
         pass
     except* asyncio.CancelledError:
         pass
+    except* HeartbeatLostError:
+        # Heartbeat loss tears down the session; close the transport so
+        # any peer that recovers and reconnects sees a clean cut.
+        with contextlib.suppress(Exception):
+            await transport.close()
     finally:
         send_queue.put_nowait(None)
         runtime._sessions.pop(ctx.session_id, None)
+        # Stash a resume record so the peer can rejoin within the window.
+        runtime._record_resume(ctx)
 
 
 async def _accept_or_close(runtime: ARCPRuntime, transport: Transport) -> SessionContext | None:
@@ -44,9 +64,9 @@ async def _accept_or_close(runtime: ARCPRuntime, transport: Transport) -> Sessio
 
     try:
         return await perform_handshake(runtime, transport)
-    except UnauthenticatedError as e:
-        await _send_close_error(transport, e)
-    except InvalidRequestError as e:
+    except ARCPError as e:
+        # Surface protocol errors (PermissionDenied, Unauthenticated,
+        # InvalidRequest, etc.) with their original code/message/retryable.
         await _send_close_error(transport, e)
     except Exception as e:
         await _send_close_error(transport, InternalError(str(e)))
@@ -54,13 +74,12 @@ async def _accept_or_close(runtime: ARCPRuntime, transport: Transport) -> Sessio
     return None
 
 
-def _maybe_start_heartbeat(ctx: SessionContext) -> asyncio.Task[Any] | None:
+def _maybe_start_heartbeat(tg: asyncio.TaskGroup, ctx: SessionContext) -> None:
+    """Start heartbeat under the session TaskGroup so loss tears down the session."""
     if not (ctx.has_feature("heartbeat") and ctx.state.heartbeat_interval_sec):
-        return None
-    ctx.heartbeat_outcome = asyncio.get_event_loop().create_future()
-    return asyncio.create_task(
-        heartbeat_loop(ctx, interval=float(ctx.state.heartbeat_interval_sec))
-    )
+        return
+    ctx.heartbeat_outcome = asyncio.get_running_loop().create_future()
+    tg.create_task(heartbeat_loop(ctx, interval=float(ctx.state.heartbeat_interval_sec)))
 
 
 async def _send_close_error(transport: Transport, err: ARCPError) -> None:

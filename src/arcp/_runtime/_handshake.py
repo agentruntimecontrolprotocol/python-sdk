@@ -5,19 +5,21 @@
 from __future__ import annotations
 
 import asyncio
+import hmac
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Any
 
 from .._envelope import Envelope
-from .._errors import InvalidRequestError
+from .._errors import InvalidRequestError, PermissionDeniedError
 from .._messages.session import (
     Capabilities,
     SessionHelloPayload,
+    SessionResume,
     SessionWelcomePayload,
 )
-from .._ulid import new_envelope_id
+from .._ulid import new_envelope_id, new_resume_token
 from .._version import intersect_features
-from .session import SessionContext, make_session_state
+from .session import SessionContext, SessionState, make_session_state
 
 if TYPE_CHECKING:
     from .server import ARCPRuntime
@@ -33,6 +35,7 @@ async def perform_handshake(runtime: ARCPRuntime, transport: Any) -> SessionCont
     Raises:
         UnauthenticatedError: bearer rejected the supplied token.
         InvalidRequestError: client did not send a valid session.hello first.
+        PermissionDeniedError: a `resume` block did not match a live record.
     """
     raw = await transport.recv()
     env = Envelope.from_wire(raw)
@@ -45,6 +48,10 @@ async def perform_handshake(runtime: ARCPRuntime, transport: Any) -> SessionCont
         tuple(hello.capabilities.features),
     )
     welcome_caps = _build_welcome_caps(runtime, negotiated)
+    if hello.resume is not None:
+        return await _perform_resume(
+            runtime, transport, identity, hello.resume, negotiated, welcome_caps
+        )
     state = make_session_state(
         principal=identity.principal,
         negotiated_features=negotiated,
@@ -62,6 +69,62 @@ async def perform_handshake(runtime: ARCPRuntime, transport: Any) -> SessionCont
     )
     runtime._sessions[ctx.session_id] = ctx
     ctx.stamp_and_enqueue(_build_welcome_envelope(runtime, ctx, welcome_caps, negotiated))
+    return ctx
+
+
+async def _perform_resume(  # noqa: PLR0913
+    runtime: ARCPRuntime,
+    transport: Any,
+    identity: Any,
+    resume: SessionResume,
+    negotiated: tuple[str, ...],
+    welcome_caps: Capabilities,
+) -> SessionContext:
+    """Validate a `hello.resume`, rebuild the session, and replay missed events.
+
+    PLR0913: every parameter is needed (runtime, transport, identity from
+    bearer, the resume request, negotiated features, welcome caps). This
+    helper exists specifically to keep `perform_handshake` simple.
+    """
+    record = runtime._pop_resumable(resume.session_id)
+    if record is None:
+        raise PermissionDeniedError(
+            f"no resumable session for session_id={resume.session_id!r}"
+        )
+    if not hmac.compare_digest(record.resume_token, resume.resume_token):
+        raise PermissionDeniedError("resume_token does not match")
+    if record.principal != identity.principal:
+        raise PermissionDeniedError("resume principal does not match the original session")
+    # Reuse the same session_id (and bump the resume_token so the next
+    # resume must use the freshly issued one).
+    state = SessionState(
+        session_id=record.session_id,
+        resume_token=new_resume_token(),
+        principal=record.principal,
+        negotiated_features=negotiated,
+        heartbeat_interval_sec=(
+            runtime.heartbeat_interval_sec if "heartbeat" in negotiated else None
+        ),
+        resume_window_sec=runtime.resume_window_sec,
+        accepted_at=datetime.now(UTC),
+    )
+    send_queue: asyncio.Queue[Envelope | None] = asyncio.Queue()
+    ctx = SessionContext(
+        transport=transport,
+        state=state,
+        send_queue=send_queue,
+        identity=identity,
+    )
+    # Continue stamping event_seq past the latest replayed value.
+    ctx.set_event_seq(record.last_event_seq)
+    runtime._sessions[ctx.session_id] = ctx
+    ctx.stamp_and_enqueue(_build_welcome_envelope(runtime, ctx, welcome_caps, negotiated))
+    # Replay everything strictly greater than `resume.last_event_seq` so the
+    # peer rejoins exactly where it left off.
+    async for env_wire in runtime.event_log.read_since_seq(
+        ctx.session_id, resume.last_event_seq
+    ):
+        ctx.stamp_and_enqueue(Envelope.from_wire(env_wire))
     return ctx
 
 

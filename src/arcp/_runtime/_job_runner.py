@@ -8,7 +8,7 @@ import asyncio
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Any
 
-from .._errors import ARCPError, LeaseExpiredError
+from .._errors import ARCPError, InternalError, LeaseExpiredError
 from .._messages.execution import JobErrorPayload, JobResultPayload
 from .credentials import UpstreamBudgetExhausted
 from .job import Agent, Job, JobContext
@@ -57,6 +57,10 @@ async def run_job(
                 watchdog.cancel()
             await _revoke_credentials(runtime, job)
             runtime._job_tasks.pop(job.job_id, None)
+            if job.idempotency_key is not None and job.last_terminal_envelope is not None:
+                # Make duplicate submits that arrive after completion observable:
+                # replay both accepted and terminal envelopes (see _handlers._replay_idempotent).
+                runtime.idempotency.set_terminal(job.job_id, job.last_terminal_envelope)
 
 
 def _start_lease_watchdog(runtime: ARCPRuntime, job: Job) -> asyncio.Task[Any] | None:
@@ -154,7 +158,8 @@ async def _revoke_credentials(runtime: ARCPRuntime, job: Job) -> None:
 
 
 async def _revoke_with_retry(runtime: ARCPRuntime, credential_id: str) -> bool:
-    assert runtime.credential_provisioner is not None
+    if runtime.credential_provisioner is None:
+        raise InternalError("_revoke_with_retry called without a credential_provisioner")
     delay = 0.01
     for attempt in range(3):
         try:

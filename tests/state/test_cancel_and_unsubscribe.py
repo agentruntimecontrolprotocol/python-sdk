@@ -12,7 +12,6 @@ from arcp import (
     ClientInfo,
     InvalidRequestError,
     JobNotFoundError,
-    PermissionDeniedError,
     RuntimeInfo,
     pair_memory_transports,
 )
@@ -95,7 +94,8 @@ async def test_cancel_missing_job_id_raises() -> None:
     await rt.close()
 
 
-async def test_cancel_other_principals_job_raises_permission_denied() -> None:
+async def test_cancel_other_principals_job_is_silently_ignored() -> None:
+    """Cancel from a non-submitter principal is dropped (§7.6) without tearing down their session."""
     from arcp._runtime._handlers import handle_cancel
 
     rt = ARCPRuntime(
@@ -144,8 +144,11 @@ async def test_cancel_other_principals_job_raises_permission_denied() -> None:
         payload=JobCancelPayload(reason="hostile").model_dump(mode="json"),
     )
 
-    with pytest.raises(PermissionDeniedError):
-        await handle_cancel(rt, ctx_b, env)
+    # p2's cancel is silently ignored; no exception, no side effects on p1's job.
+    await handle_cancel(rt, ctx_b, env)
+    task = rt._job_tasks.get(handle.job_id)
+    assert task is not None, "p1's job task must still be tracked"
+    assert not task.done(), "p1's job task must not be cancelled by p2"
 
     for cli in (ca, cb):
         await cli.close()

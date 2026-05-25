@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import contextlib
+import time
 from collections.abc import Callable
 from dataclasses import dataclass, field
 from typing import Any, Self
@@ -67,8 +68,60 @@ class _AgentRegistration:
     bare: Agent | None = None  # registered without a version
 
 
+@dataclass(frozen=True)
+class _ResumeRecord:
+    """Server-side bookkeeping for a recently-disconnected session.
+
+    Holds the minimum needed to authorize a resume hello and pick the
+    event_seq replay point: principal, the secret resume_token, the last
+    event_seq the runtime stamped on this session, and an absolute expiry.
+    """
+
+    session_id: str
+    principal: str
+    resume_token: str
+    last_event_seq: int
+    expires_at: float
+    negotiated_features: tuple[str, ...]
+    heartbeat_interval_sec: int | None
+
+
 class ARCPRuntime:
-    """Server-side runtime: register agents, accept transports, dispatch envelopes."""
+    """Server-side runtime: register agents, accept transports, dispatch envelopes.
+
+    Construct once per process. Wire it to a transport via `await
+    runtime.accept(transport)` (typically wrapped by `serve_websocket` or
+    the ASGI adapter). Each `accept()` call drives one full session.
+
+    Args:
+        runtime: Identifies this runtime (name + version) — echoed in
+            every `session.welcome`.
+        bearer: Verifies the bearer token in `session.hello.auth`.
+            Use `StaticBearerVerifier` for demos, `JWTVerifier` for prod.
+        capabilities: Optional override of advertised capabilities;
+            defaults to the v1.1 feature set, optionally augmented with
+            provisioned-credential features if a `credential_provisioner`
+            is configured.
+        heartbeat_interval_sec: Server-driven ping interval. `None`
+            disables heartbeat. Heartbeat loss tears the session down.
+        resume_window_sec: How long to retain a resume record after
+            disconnect. `0` disables resume entirely.
+        idempotency_ttl_sec: TTL for entries in the idempotency store.
+        max_concurrent_jobs: Cap on simultaneous running agent tasks.
+        chunk_size_cap: Per-`result_chunk` size cap (spec §14 SHOULD).
+        job_authorization_policy: Hook controlling list/subscribe/cancel
+            visibility (defaults to same-principal).
+        event_log: Storage for replayable envelopes. Defaults to
+            `InMemoryEventLog`; pass `SqliteEventLog(path)` for durability.
+        credential_provisioner: Optional adapter that issues per-job
+            credentials. Requires `revocation_log` to also be supplied.
+        revocation_log: Durable revocation record for provisioned creds.
+        logger: Optional structlog-style logger (defaults to package logger).
+
+    Raises:
+        InvalidRequestError: If `credential_provisioner` is supplied
+            without a `revocation_log`.
+    """
 
     def __init__(  # noqa: PLR0913
         self,
@@ -113,17 +166,28 @@ class ARCPRuntime:
 
         self._agents: dict[str, _AgentRegistration] = {}
         self._sessions: dict[str, SessionContext] = {}
+        self._resume_records: dict[str, _ResumeRecord] = {}
         self._jobs: dict[str, Job] = {}
         self._job_tasks: dict[str, asyncio.Task[Any]] = {}
         self._closed = asyncio.Event()
         self._semaphore = asyncio.Semaphore(max_concurrent_jobs)
 
     def register_agent(self, name: str, fn: Agent) -> Self:
+        """Register an unversioned agent callable for `name`.
+
+        The callable must match `async def fn(input, ctx: JobContext) -> Any`.
+        Returns `self` for chaining.
+        """
         reg = self._agents.setdefault(name, _AgentRegistration(name=name))
         reg.bare = fn
         return self
 
     def register_agent_version(self, name: str, version: str, fn: Agent) -> Self:
+        """Register a specific `version` of agent `name`.
+
+        The first version registered becomes the default; override later
+        with `set_default_agent_version`. Returns `self` for chaining.
+        """
         reg = self._agents.setdefault(name, _AgentRegistration(name=name))
         reg.versions[version] = fn
         if reg.default_version is None:
@@ -131,6 +195,12 @@ class ARCPRuntime:
         return self
 
     def set_default_agent_version(self, name: str, version: str) -> Self:
+        """Choose which previously-registered `version` is selected when
+        a client submits with a bare `name` (no `@version` suffix).
+
+        Raises:
+            AgentVersionNotAvailableError: If `name@version` is not registered.
+        """
         reg = self._agents.get(name)
         if reg is None or version not in reg.versions:
             raise AgentVersionNotAvailableError(f"unknown agent version: {name}@{version}")
@@ -138,6 +208,7 @@ class ARCPRuntime:
         return self
 
     def agent_inventory(self) -> tuple[AgentInventoryEntry, ...]:
+        """Snapshot of registered agents for `session.welcome.capabilities.agents`."""
         out: list[AgentInventoryEntry] = []
         for reg in self._agents.values():
             out.append(
@@ -168,10 +239,40 @@ class ARCPRuntime:
         return reg.versions[version], name, version
 
     async def accept(self, transport: Transport) -> None:
-        """Drive one full session over `transport`. Returns when session ends."""
+        """Drive one full session over `transport` — handshake, dispatch, teardown.
+
+        Returns when the session ends (peer sends `session.bye`, the
+        transport closes, heartbeat is lost, or the runtime is closed).
+        Spawn one task per inbound connection.
+        """
         from ._accept import run_session
 
         await run_session(self, transport)
+
+    def _record_resume(self, ctx: SessionContext) -> None:
+        """Stash a resumable record for `ctx` so a peer may rejoin within the window."""
+        if self.resume_window_sec <= 0:
+            return
+        self._resume_records[ctx.session_id] = _ResumeRecord(
+            session_id=ctx.session_id,
+            principal=ctx.principal,
+            resume_token=ctx.state.resume_token,
+            last_event_seq=ctx.latest_event_seq,
+            expires_at=time.time() + self.resume_window_sec,
+            negotiated_features=ctx.negotiated_features,
+            heartbeat_interval_sec=ctx.state.heartbeat_interval_sec,
+        )
+
+    def _pop_resumable(self, session_id: str) -> _ResumeRecord | None:
+        """Look up and remove an unexpired resume record for `session_id`."""
+        self._sweep_resume_records()
+        return self._resume_records.pop(session_id, None)
+
+    def _sweep_resume_records(self) -> None:
+        now = time.time()
+        expired = [sid for sid, rec in self._resume_records.items() if rec.expires_at <= now]
+        for sid in expired:
+            self._resume_records.pop(sid, None)
 
     async def _dispatch(self, ctx: SessionContext, env: Envelope) -> None:
         t = env.type
@@ -212,6 +313,13 @@ class ARCPRuntime:
         await run_job(self, job, agent_fn, agent_input, max_runtime_sec=max_runtime_sec)
 
     async def close(self) -> None:
+        """Cancel all running jobs and close the event log.
+
+        Idempotent. Does not close in-flight transports — those are
+        owned by the caller of `accept()`. Call after the embedding
+        server (e.g. the WebSocket server) has stopped accepting new
+        connections.
+        """
         self._closed.set()
         for task in list(self._job_tasks.values()):
             if not task.done():

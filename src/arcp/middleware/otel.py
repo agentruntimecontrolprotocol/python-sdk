@@ -10,7 +10,7 @@ from opentelemetry import propagate, trace
 from opentelemetry.trace import SpanKind, Tracer
 
 from .._extensions import OTEL_EXTENSION_KEY
-from .._transport.base import Transport, TransportClosed
+from .._transport.base import Transport
 
 _ENV_ATTR_KEYS: tuple[tuple[str, str], ...] = (
     ("session_id", "arcp.session_id"),
@@ -123,10 +123,6 @@ def with_tracing(
     """Wrap `inner` so each send/recv produces an OTel span and propagates traceparent."""
     t = tracer or trace.get_tracer("arcp.middleware.otel")
     return _TracedTransport(inner, t, send_span_name, recv_span_name)
-
-
-# silence unused TransportClosed
-_ = TransportClosed
 
 
 __all__ = ("OTEL_EXTENSION_KEY", "with_tracing")

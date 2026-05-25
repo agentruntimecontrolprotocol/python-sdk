@@ -183,14 +183,34 @@ def _redact_subscriber_payload(payload: dict[str, Any]) -> dict[str, Any]:
     return {**payload, "body": body}
 
 
-async def write_pump(transport: Transport, queue: asyncio.Queue[Envelope | None]) -> None:
-    """Drain `queue` to `transport.send`. Sentinel `None` exits cleanly."""
+async def write_pump(
+    transport: Transport,
+    queue: asyncio.Queue[Envelope | None],
+    *,
+    event_log: Any = None,
+    session_id: str | None = None,
+) -> None:
+    """Drain `queue` to `transport.send`. Sentinel `None` exits cleanly.
+
+    Each replayable envelope (those that carry an `event_seq` — `job.event`,
+    `job.result`, `job.error`) is also appended to `event_log` so resume can
+    replay it later. Append failures are logged but do not block delivery
+    to the connected peer.
+    """
     while True:
         item = await queue.get()
         if item is None:
             return
+        wire = item.to_wire()
+        if event_log is not None and session_id is not None and item.event_seq is not None:
+            try:
+                await event_log.append(session_id, wire)
+            except Exception:
+                _LOG.exception(
+                    "event_log_append_failed", session_id=session_id, type=item.type
+                )
         try:
-            await transport.send(item.to_wire())
+            await transport.send(wire)
         except TransportClosed:
             return
 
@@ -202,11 +222,16 @@ async def heartbeat_loop(
     miss_threshold: int = 2,
     on_ping: Any = None,
 ) -> None:
-    """Send `session.ping` on each interval; raise `HeartbeatLostError` after miss_threshold."""
+    """Send `session.ping` on each interval; raise `HeartbeatLostError` after miss_threshold.
+
+    Heartbeat loss propagates as an exception so the supervising `TaskGroup`
+    tears down the read pump and write pump and the session is removed
+    from the runtime. The `heartbeat_outcome` future is also resolved with
+    the same error for any explicit waiters.
+    """
     from .._messages.session import SessionPingPayload
     from .._ulid import new_ulid
 
-    last_seen = ctx.last_inbound_at
     while True:
         try:
             await asyncio.sleep(interval)
@@ -215,10 +240,11 @@ async def heartbeat_loop(
         now = datetime.now(UTC)
         gap = (now - ctx.last_inbound_at).total_seconds()
         if gap >= interval * miss_threshold:
+            err = HeartbeatLostError("heartbeat lost")
             if ctx.heartbeat_outcome is not None and not ctx.heartbeat_outcome.done():
-                ctx.heartbeat_outcome.set_exception(HeartbeatLostError("heartbeat lost"))
+                ctx.heartbeat_outcome.set_exception(err)
             _LOG.warning("heartbeat_lost", session_id=ctx.session_id, gap=gap)
-            return
+            raise err
         nonce = new_ulid()
         payload = SessionPingPayload(nonce=nonce, sent_at=now.isoformat()).model_dump(mode="json")
         env = Envelope(
@@ -230,7 +256,6 @@ async def heartbeat_loop(
         ctx.stamp_and_enqueue(env)
         if on_ping is not None:
             on_ping(nonce)
-        _ = last_seen  # symbol-keep
 
 
 __all__ = (

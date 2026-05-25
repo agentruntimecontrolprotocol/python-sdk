@@ -3,15 +3,6 @@
 from __future__ import annotations
 
 import asyncio
-
-import pytest
-
-pytestmark = pytest.mark.skip(
-    reason="cross-session timing: server-side PermissionDenied response propagation "
-    "into client B's session error path is wired but the dual-session test interleaving "
-    "occasionally hangs on the second submitter cancel — covered manually."
-)
-
 import contextlib
 
 from arcp import (

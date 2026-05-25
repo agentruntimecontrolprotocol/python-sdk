@@ -27,6 +27,7 @@ from .._messages.session import (
     SessionJobsPayload,
     SessionListJobsPayload,
 )
+from .._transport.base import Transport
 from .._ulid import new_envelope_id
 from .handles import JobHandle, JobSubscription
 
@@ -36,6 +37,17 @@ if TYPE_CHECKING:
 
 def _now_iso() -> str:
     return datetime.now(UTC).isoformat().replace("+00:00", "Z")
+
+
+def _require_transport(client: ARCPClient) -> Transport:
+    """Return the connected transport or raise `InternalError` if absent.
+
+    Uses an explicit raise rather than `assert` so the check survives
+    `python -O` / `PYTHONOPTIMIZE=1`. Doubles as a pyright type narrower.
+    """
+    if client._transport is None:
+        raise InternalError("transport not connected; call `await client.connect(...)` first")
+    return client._transport
 
 
 async def submit_job(  # noqa: PLR0913
@@ -52,7 +64,7 @@ async def submit_job(  # noqa: PLR0913
 ) -> JobHandle:
     # PLR0913: every arg is an optional protocol-payload field. Bundling
     # them in a dataclass for one operation reduces ergonomics.
-    assert client._transport is not None
+    transport = _require_transport(client)
     submit = JobSubmitPayload(
         agent=agent,
         input=input,
@@ -62,29 +74,29 @@ async def submit_job(  # noqa: PLR0913
         max_runtime_sec=max_runtime_sec,
         parent_job_id=parent_job_id,
     )
+    env_id = new_envelope_id()
     env = Envelope(
-        id=new_envelope_id(),
+        id=env_id,
         type="job.submit",
         session_id=client._session_id,
         trace_id=trace_id,
         payload=submit.model_dump(mode="json", exclude_none=True),
     )
-    accept_fut: asyncio.Future[JobAcceptedPayload] = asyncio.get_event_loop().create_future()
-    client._pending_accepts.append(accept_fut)
-    await client._transport.send(env.to_wire())
+    accept_fut: asyncio.Future[tuple[JobAcceptedPayload, JobHandle]] = (
+        asyncio.get_running_loop().create_future()
+    )
+    client._pending_accepts[env_id] = accept_fut
+    await transport.send(env.to_wire())
     try:
-        accepted = await asyncio.wait_for(accept_fut, timeout=client.handshake_timeout_sec)
+        _, handle = await asyncio.wait_for(accept_fut, timeout=client.handshake_timeout_sec)
     except (TimeoutError, ARCPError):
-        with contextlib.suppress(ValueError):
-            client._pending_accepts.remove(accept_fut)
+        client._pending_accepts.pop(env_id, None)
         raise
-    handle = JobHandle(job_id=accepted.job_id, accepted=accepted)
-    client._handles[accepted.job_id] = handle
     return handle
 
 
 async def cancel_job(client: ARCPClient, job_id: str, *, reason: str = "client.cancel") -> None:
-    assert client._transport is not None
+    transport = _require_transport(client)
     payload = JobCancelPayload(reason=reason)
     env = Envelope(
         id=new_envelope_id(),
@@ -93,7 +105,7 @@ async def cancel_job(client: ARCPClient, job_id: str, *, reason: str = "client.c
         job_id=job_id,
         payload=payload.model_dump(mode="json", exclude_none=True),
     )
-    await client._transport.send(env.to_wire())
+    await transport.send(env.to_wire())
 
 
 async def list_jobs(
@@ -105,7 +117,7 @@ async def list_jobs(
 ) -> SessionJobsPayload:
     if not client.has_feature("list_jobs"):
         raise InvalidRequestError("feature 'list_jobs' not negotiated")
-    assert client._transport is not None
+    transport = _require_transport(client)
     payload = SessionListJobsPayload(filter=filter, limit=limit, cursor=cursor)
     env_id = new_envelope_id()
     fut = client._pending.register(env_id)
@@ -115,7 +127,7 @@ async def list_jobs(
         session_id=client._session_id,
         payload=payload.model_dump(mode="json", exclude_none=True),
     )
-    await client._transport.send(env.to_wire())
+    await transport.send(env.to_wire())
     result = await fut
     if not isinstance(result, SessionJobsPayload):
         raise InternalError(f"expected SessionJobsPayload, got {type(result).__name__}")
@@ -131,7 +143,7 @@ async def subscribe(
 ) -> JobSubscription:
     if not client.has_feature("subscribe"):
         raise InvalidRequestError("feature 'subscribe' not negotiated")
-    assert client._transport is not None
+    transport = _require_transport(client)
     payload = JobSubscribePayload(job_id=job_id, history=history, from_event_seq=from_event_seq)
     env_id = new_envelope_id()
     fut = client._pending.register(env_id)
@@ -142,7 +154,7 @@ async def subscribe(
         job_id=job_id,
         payload=payload.model_dump(mode="json", exclude_none=True),
     )
-    await client._transport.send(env.to_wire())
+    await transport.send(env.to_wire())
     subscribed: JobSubscribedPayload = await fut
     accepted = JobAcceptedPayload(
         job_id=subscribed.job_id,
@@ -168,7 +180,7 @@ async def subscribe(
 async def unsubscribe(client: ARCPClient, job_id: str) -> None:
     if not client.has_feature("subscribe"):
         return
-    assert client._transport is not None
+    transport = _require_transport(client)
     payload = JobUnsubscribePayload(job_id=job_id)
     env = Envelope(
         id=new_envelope_id(),
@@ -176,14 +188,14 @@ async def unsubscribe(client: ARCPClient, job_id: str) -> None:
         session_id=client._session_id,
         payload=payload.model_dump(mode="json"),
     )
-    await client._transport.send(env.to_wire())
+    await transport.send(env.to_wire())
     client._subscriptions.pop(job_id, None)
 
 
 async def ack(client: ARCPClient, last_processed_seq: int) -> None:
     if not client.has_feature("ack"):
         return
-    assert client._transport is not None
+    transport = _require_transport(client)
     payload = SessionAckPayload(last_processed_seq=last_processed_seq)
     env = Envelope(
         id=new_envelope_id(),
@@ -191,7 +203,7 @@ async def ack(client: ARCPClient, last_processed_seq: int) -> None:
         session_id=client._session_id,
         payload=payload.model_dump(mode="json"),
     )
-    await client._transport.send(env.to_wire())
+    await transport.send(env.to_wire())
 
 
 async def close_session(client: ARCPClient, *, reason: str = "client.close") -> None:

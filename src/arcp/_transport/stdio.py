@@ -61,12 +61,7 @@ class StdioTransport:
         """Wrap a subprocess's stdout (read) and stdin (write) as a transport."""
         if proc.stdout is None or proc.stdin is None:
             raise ValueError("subprocess must be created with stdin and stdout pipes")
-        loop = asyncio.get_running_loop()
-        reader = proc.stdout
-        # proc.stdin is a StreamWriter
-        writer = proc.stdin
-        _ = loop  # silences unused-loop binding without dropping the symbol
-        return cls(reader=reader, writer=writer)
+        return cls(reader=proc.stdout, writer=proc.stdin)
 
     @classmethod
     async def from_std_streams(cls) -> StdioTransport:

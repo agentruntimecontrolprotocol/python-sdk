@@ -52,7 +52,7 @@ async def test_heartbeat_cancelled_returns_cleanly() -> None:
 
 
 async def test_heartbeat_lost_sets_exception_on_outcome() -> None:
-    """Gap >= interval * miss_threshold sets HeartbeatLostError on heartbeat_outcome."""
+    """Gap >= interval * miss_threshold raises and sets HeartbeatLostError on outcome."""
     ctx = _make_ctx()
     loop = asyncio.get_running_loop()
     ctx.heartbeat_outcome = loop.create_future()
@@ -61,30 +61,31 @@ async def test_heartbeat_lost_sets_exception_on_outcome() -> None:
     ctx._last_inbound_at = datetime(2000, 1, 1, tzinfo=UTC)
 
     # interval=0.05 s, miss_threshold=1 → threshold=0.05 s; gap >> threshold
-    await asyncio.wait_for(
-        heartbeat_loop(ctx, interval=0.05, miss_threshold=1),
-        timeout=1.0,
-    )
+    with pytest.raises(HeartbeatLostError):
+        await asyncio.wait_for(
+            heartbeat_loop(ctx, interval=0.05, miss_threshold=1),
+            timeout=1.0,
+        )
 
+    # The outcome future is also resolved with the same error for waiters
     assert ctx.heartbeat_outcome.done()
     with pytest.raises(HeartbeatLostError):
         ctx.heartbeat_outcome.result()
 
 
 async def test_heartbeat_loss_without_outcome_future_is_safe() -> None:
-    """heartbeat_loop handles heartbeat_outcome=None gracefully when loss fires."""
+    """heartbeat_loop raises HeartbeatLostError even when no outcome future is attached."""
     ctx = _make_ctx()
     ctx.heartbeat_outcome = None  # no future attached
 
     # Back-date to trigger loss on first check
     ctx._last_inbound_at = datetime(2000, 1, 1, tzinfo=UTC)
 
-    # Should complete without AttributeError or TypeError
-    await asyncio.wait_for(
-        heartbeat_loop(ctx, interval=0.05, miss_threshold=1),
-        timeout=1.0,
-    )
-    # No assertion needed — reaching here means no exception was raised
+    with pytest.raises(HeartbeatLostError):
+        await asyncio.wait_for(
+            heartbeat_loop(ctx, interval=0.05, miss_threshold=1),
+            timeout=1.0,
+        )
 
 
 async def test_heartbeat_sends_ping_and_invokes_on_ping_callback() -> None:
@@ -114,7 +115,7 @@ async def test_heartbeat_sends_ping_and_invokes_on_ping_callback() -> None:
     assert found_ping, "expected at least one session.ping in the send queue"
 
 
-async def test_heartbeat_loss_with_done_outcome_does_not_raise() -> None:
+async def test_heartbeat_loss_with_done_outcome_does_not_raise_invalid_state() -> None:
     """If heartbeat_outcome is already done, set_exception is skipped (guarded by .done())."""
     ctx = _make_ctx()
     loop = asyncio.get_running_loop()
@@ -124,8 +125,9 @@ async def test_heartbeat_loss_with_done_outcome_does_not_raise() -> None:
 
     ctx._last_inbound_at = datetime(2000, 1, 1, tzinfo=UTC)
 
-    # Should complete without InvalidStateError (future already done guard)
-    await asyncio.wait_for(
-        heartbeat_loop(ctx, interval=0.05, miss_threshold=1),
-        timeout=1.0,
-    )
+    # Should raise HeartbeatLostError without InvalidStateError on the done future.
+    with pytest.raises(HeartbeatLostError):
+        await asyncio.wait_for(
+            heartbeat_loop(ctx, interval=0.05, miss_threshold=1),
+            timeout=1.0,
+        )

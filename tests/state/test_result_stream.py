@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import asyncio
-import base64
 import contextlib
 
 import pytest
@@ -85,9 +84,9 @@ async def test_result_stream_write_bytes_base64() -> None:
     await stream.write(raw)
 
     assert stream._chunk_seq == 1
-    # The size should be length of base64-encoded string bytes
-    expected_encoded = base64.b64encode(raw).decode("ascii")
-    assert stream._total_size == len(expected_encoded.encode("utf-8"))
+    # result_size tracks decoded application byte length (per ResultStream
+    # docstring), independent of whether the wire payload was base64-encoded.
+    assert stream._total_size == len(raw)
 
     await client.close()
     accept_task.cancel()

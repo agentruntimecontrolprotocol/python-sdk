@@ -4,12 +4,13 @@
 
 from __future__ import annotations
 
+import asyncio
 from collections.abc import Awaitable, Callable
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Any
 
 from .._envelope import Envelope
-from .._errors import error_from_payload
+from .._errors import InternalError, error_from_payload
 from .._messages.execution import (
     JobAcceptedPayload,
     JobErrorPayload,
@@ -22,6 +23,7 @@ from .._messages.session import (
     SessionPongPayload,
 )
 from .._ulid import new_envelope_id
+from .handles import JobHandle
 
 if TYPE_CHECKING:
     from .client import ARCPClient
@@ -66,7 +68,8 @@ async def _on_session_ping(client: ARCPClient, env: Envelope) -> None:
         session_id=client._session_id,
         payload=pong.model_dump(mode="json"),
     )
-    assert client._transport is not None
+    if client._transport is None:
+        raise InternalError("client received session.ping before transport was attached")
     await client._transport.send(out.to_wire())
 
 
@@ -92,9 +95,27 @@ async def _on_job_accepted(client: ARCPClient, env: Envelope) -> None:
     if not client._pending_accepts:
         return
     accepted = JobAcceptedPayload.model_validate(env.payload)
-    fut = client._pending_accepts.popleft()
+    fut: asyncio.Future[tuple[JobAcceptedPayload, JobHandle]] | None = None
+    if accepted.request_id is not None:
+        # New runtimes echo the submit envelope id as request_id; correlate
+        # directly so concurrent or out-of-order accepts resolve correctly.
+        fut = client._pending_accepts.pop(accepted.request_id, None)
+    if fut is None:
+        # Legacy runtimes omit request_id: fall back to FIFO matching, which
+        # is correct for serialized submits.
+        oldest_key = next(iter(client._pending_accepts))
+        fut = client._pending_accepts.pop(oldest_key)
+    # Create and register the handle synchronously *before* resolving the
+    # submit future. If a terminal envelope follows immediately (e.g. an
+    # idempotent replay of a completed job), the dispatcher pops the same
+    # handle out of `_handles` and resolves it. The handle is also returned
+    # in the future result so the awaiting `submit()` uses *this* handle
+    # (even if it has already been popped on terminal by the time submit
+    # resumes).
+    handle = JobHandle(job_id=accepted.job_id, accepted=accepted)
+    client._handles[accepted.job_id] = handle
     if not fut.done():
-        fut.set_result(accepted)
+        fut.set_result((accepted, handle))
 
 
 async def _on_job_event(client: ARCPClient, env: Envelope) -> None:
@@ -115,6 +136,9 @@ async def _on_job_terminal(client: ARCPClient, env: Envelope, *, terminal_kind: 
     if env.job_id is None:
         return
     handle = client._handles.pop(env.job_id, None)
+    # Terminal events end any active subscription for this job; the client
+    # only needs to call `unsubscribe()` to opt out *before* completion.
+    client._subscriptions.pop(env.job_id, None)
     if handle is None:
         return
     if terminal_kind == "result":

@@ -31,22 +31,23 @@ arcp serve --token demo-token --principal cli-user
 
 ### `arcp submit`
 
-Submit a job to a running runtime and print the result.
+Submit a single job and print the terminal `job.result` JSON.
 
 ```bash
-arcp submit --url ws://localhost:7777/arcp --agent echo \
-  --input '{"url":"https://example.com"}' --token my-bearer-token
+arcp submit --url ws://localhost:7777/arcp --token my-bearer-token \
+  --agent echo --input '{"url":"https://example.com"}' \
+  --lease '{"net.fetch":["https://*"]}'
 ```
 
 **Arguments:**
 
-| Argument | Description |
-|---|---|
-| `--url` | WebSocket URL of the runtime |
-| `--agent` | Agent name |
-| `--input` | JSON-encoded input |
-| `--token` | Bearer token |
-| `--lease` | Lease JSON object |
+| Argument | Default | Description |
+|---|---|---|
+| `--url` | required | WebSocket URL of the runtime (e.g. `ws://host:7777/arcp`) |
+| `--token` | required | Bearer token |
+| `--agent` | required | Agent name (optionally `name@version`) |
+| `--input` | `null` | JSON-encoded input passed to the agent |
+| `--lease` | `{}` | Lease as JSON object (e.g. `{"net.fetch":["https://*"]}`) |
 
 ### `arcp tail`
 
@@ -60,10 +61,18 @@ Prints each `JobEvent` as a JSON line. Press `Ctrl-C` to stop.
 
 ### `arcp replay`
 
-Replay a recorded event stream from a JSONL file.
+Replay a recorded event stream from a SQLite event log.
 
 ```bash
-arcp replay --db events.sqlite --session SESSION_ID
+arcp replay --db events.sqlite --session SESSION_ID --after-seq 0
 ```
 
-Useful for debugging: record a live stream from `tail` and replay it from the SQLite event log.
+**Arguments:**
+
+| Argument | Default | Description |
+|---|---|---|
+| `--db` | required | SQLite event log path |
+| `--session` | required | Session id to replay |
+| `--after-seq` | `0` | Skip envelopes whose `event_seq` is &lt;= this value |
+
+Each line is one envelope as JSON. Useful for debugging an event stream recorded with `arcp serve --db events.sqlite` after the fact.

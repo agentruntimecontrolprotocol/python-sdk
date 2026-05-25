@@ -3,15 +3,6 @@
 from __future__ import annotations
 
 import asyncio
-
-import pytest
-
-pytestmark = pytest.mark.skip(
-    reason="three-session fan-out: subscribe-during-running race lands intermittently "
-    "on memory transport; subscriber-scoped seq invariant is enforced in code "
-    "(see SessionContext._fanout_to_subscribers) and exercised by examples/subscribe/."
-)
-
 import contextlib
 
 from arcp import (
@@ -32,12 +23,20 @@ async def test_subscriber_seqs_independent_and_monotonic() -> None:
         job_authorization_policy=lambda ctx: True,  # allow everyone to subscribe
     )
 
-    async def slow_agent(input_value, ctx):
+    # Deterministic sync: the agent emits log lines only after the test
+    # explicitly releases it — that ensures subscribers attach before any
+    # events flow, removing the race that previously made the suite skip.
+    subscribers_attached = asyncio.Event()
+    finished_emitting = asyncio.Event()
+
+    async def emitter(input_value, ctx):
+        await subscribers_attached.wait()
         for i in range(5):
             await ctx.log("info", f"line-{i}")
+        finished_emitting.set()
         return "done"
 
-    rt.register_agent("emitter", slow_agent)
+    rt.register_agent("emitter", emitter)
 
     async def connect_as(token: str) -> tuple[ARCPClient, asyncio.Task]:
         server_t, client_t = pair_memory_transports()
@@ -55,16 +54,19 @@ async def test_subscriber_seqs_independent_and_monotonic() -> None:
     c_cli, tc = await connect_as("t-c")
     try:
         handle = await a.submit(agent="emitter")
-        # Both B and C subscribe before the job completes — best-effort race.
+        # B and C subscribe BEFORE the agent emits any events.
         sub_b = await b.subscribe(handle.job_id)
         sub_c = await c_cli.subscribe(handle.job_id)
-        await handle.done
+        # Release the agent now that both subscribers are attached.
+        subscribers_attached.set()
+        await asyncio.wait_for(finished_emitting.wait(), timeout=2.0)
+        await asyncio.wait_for(handle.done, timeout=2.0)
 
         # Validate subscription metadata exists (subscriber-scoped state).
         assert sub_b.job_id == handle.job_id
         assert sub_c.job_id == handle.job_id
-        # Subscribed_from is the subscriber-scoped seq counter snapshot — proof
-        # that each subscriber has its own counter.
+        # subscribed_from is the subscriber-scoped seq snapshot — proof that
+        # each subscriber owns its own counter independent of the others.
         assert sub_b.subscribed_from >= 0
         assert sub_c.subscribed_from >= 0
     finally:

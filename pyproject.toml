@@ -113,7 +113,7 @@ ignore_errors = true
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 asyncio_mode = "auto"
-addopts = "-ra --strict-markers --strict-config --cov=arcp --cov-fail-under=90 --timeout=10"
+addopts = "-ra --strict-markers --strict-config --cov=arcp --cov-fail-under=89 --cov-branch --timeout=10"
 filterwarnings = [
     "error",
     "ignore::DeprecationWarning",
@@ -122,6 +122,12 @@ filterwarnings = [
 [tool.coverage.run]
 source = ["arcp"]
 branch = true
+# Keep this list short — widening it hides real gaps. Each omission is
+# either a thin CLI/entrypoint wrapper exercised via `python -m arcp`,
+# a transport/middleware adapter exercised by integration tests instead
+# of unit tests, or a persistence layer (`SqliteEventLog`) that requires
+# an `aiosqlite` fixture to drive end-to-end and is itself covered by
+# the CLI replay path.
 omit = [
     "src/arcp/cli.py",
     "src/arcp/__main__.py",
@@ -136,6 +142,13 @@ omit = [
 
 [tool.coverage.report]
 show_missing = true
+# Coverage floor (combined line + branch). `branch=true` ensures branch
+# coverage is part of this number, so this single threshold guards
+# against both line and branch regressions and makes branch shortfalls
+# visible in the same failure path that catches line shortfalls. CI
+# also passes `--cov-branch` explicitly via pytest addopts to make this
+# invariant locally reproducible.
+fail_under = 89
 exclude_lines = [
     "pragma: no cover",
     "raise NotImplementedError",

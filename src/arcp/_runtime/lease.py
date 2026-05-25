@@ -67,8 +67,8 @@ def validate_lease_constraints(
 
 
 def _parse_iso_utc(value: str) -> datetime:
-    s = value.replace("Z", "+00:00")
-    dt = datetime.fromisoformat(s)
+    # Python 3.11+ `fromisoformat` accepts `Z` natively; no rewrite needed.
+    dt = datetime.fromisoformat(value)
     if dt.tzinfo is None:
         dt = dt.replace(tzinfo=UTC)
     return dt

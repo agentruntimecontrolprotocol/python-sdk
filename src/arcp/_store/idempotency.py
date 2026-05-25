@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import dataclasses
 import json
 import time
 from dataclasses import dataclass, field
@@ -10,12 +11,20 @@ from typing import Any
 
 @dataclass(frozen=True)
 class IdempotencyEntry:
-    """Stored result for a previously-seen idempotency key."""
+    """Stored result for a previously-seen idempotency key.
+
+    `terminal_envelope` is `None` while the original job is still running
+    and populated with the wire dict of the terminal `job.result` / `job.error`
+    envelope when the job reaches a final state. Duplicate submits replay
+    both the accepted envelope and (if present) the terminal envelope so
+    the caller's handle resolves promptly instead of hanging.
+    """
 
     job_id: str
     accepted_envelope: dict[str, Any]
     submit_fingerprint: str
     expires_at: float
+    terminal_envelope: dict[str, Any] | None = None
 
 
 @dataclass
@@ -24,6 +33,7 @@ class IdempotencyStore:
 
     ttl_sec: float = 24 * 60 * 60
     _by_key: dict[tuple[str, str], IdempotencyEntry] = field(default_factory=dict)  # pyright: ignore[reportUnknownVariableType]
+    _by_job_id: dict[str, tuple[str, str]] = field(default_factory=dict)  # pyright: ignore[reportUnknownVariableType]
 
     @staticmethod
     def fingerprint(submit_payload: dict[str, Any]) -> str:
@@ -34,7 +44,8 @@ class IdempotencyStore:
         now = time.time()
         expired = [k for k, v in self._by_key.items() if v.expires_at <= now]
         for k in expired:
-            del self._by_key[k]
+            entry = self._by_key.pop(k)
+            self._by_job_id.pop(entry.job_id, None)
 
     def get(self, principal: str, key: str) -> IdempotencyEntry | None:
         self._sweep()
@@ -56,7 +67,18 @@ class IdempotencyStore:
             expires_at=time.time() + self.ttl_sec,
         )
         self._by_key[(principal, key)] = entry
+        self._by_job_id[job_id] = (principal, key)
         return entry
+
+    def set_terminal(self, job_id: str, terminal_envelope: dict[str, Any]) -> None:
+        """Attach a terminal envelope to the idempotency entry for `job_id`, if any."""
+        loc = self._by_job_id.get(job_id)
+        if loc is None:
+            return
+        existing = self._by_key.get(loc)
+        if existing is None:
+            return
+        self._by_key[loc] = dataclasses.replace(existing, terminal_envelope=terminal_envelope)
 
 
 __all__ = ("IdempotencyEntry", "IdempotencyStore")
