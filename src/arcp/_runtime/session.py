@@ -3,8 +3,8 @@
 from __future__ import annotations
 
 import asyncio
+import datetime as dt
 from dataclasses import dataclass
-from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Any
 
 from .._envelope import Envelope
@@ -38,7 +38,7 @@ class SessionState:
     negotiated_features: tuple[str, ...]
     heartbeat_interval_sec: int | None
     resume_window_sec: int
-    accepted_at: datetime
+    accepted_at: dt.datetime
     last_acked_seq: int = 0
 
 
@@ -59,7 +59,7 @@ class SessionContext:
         self._send_queue = send_queue
         self._event_seq = 0
         self.heartbeat_outcome: asyncio.Future[None] | None = None
-        self._last_inbound_at = datetime.now(UTC)
+        self._last_inbound_at = dt.datetime.now(dt.UTC)
         # job_id -> {subscriber_session_id: SubscriberLink}
         self.subscribers: dict[str, dict[str, SubscriberLink]] = {}
 
@@ -92,10 +92,10 @@ class SessionContext:
         self._event_seq = value
 
     def record_inbound(self) -> None:
-        self._last_inbound_at = datetime.now(UTC)
+        self._last_inbound_at = dt.datetime.now(dt.UTC)
 
     @property
-    def last_inbound_at(self) -> datetime:
+    def last_inbound_at(self) -> dt.datetime:
         return self._last_inbound_at
 
     def record_ack(self, last_processed_seq: int) -> None:
@@ -167,7 +167,7 @@ def make_session_state(  # noqa: PLR0913
         negotiated_features=negotiated_features,
         heartbeat_interval_sec=heartbeat_interval_sec,
         resume_window_sec=resume_window_sec,
-        accepted_at=datetime.now(UTC),
+        accepted_at=dt.datetime.now(dt.UTC),
     )
 
 
@@ -235,7 +235,7 @@ async def heartbeat_loop(
             await asyncio.sleep(interval)
         except asyncio.CancelledError:
             return
-        now = datetime.now(UTC)
+        now = dt.datetime.now(dt.UTC)
         gap = (now - ctx.last_inbound_at).total_seconds()
         if gap >= interval * miss_threshold:
             err = HeartbeatLostError("heartbeat lost")

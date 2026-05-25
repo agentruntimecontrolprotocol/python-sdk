@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import UTC
+import datetime as dt
 
 from arcp import InvalidRequestError
 from arcp.client import ARCPClient
@@ -14,15 +14,13 @@ async def test_inline_then_chunk_raises(runtime: ARCPRuntime, client: ARCPClient
 
     async def mixer(input_value, ctx):
         # Emit an inline result via direct send.
-        from datetime import datetime
-
         from arcp._messages.execution import JobResultPayload
 
         await ctx.job.emit_result(
             JobResultPayload(
                 final_status="success",
                 result={"x": 1},
-                completed_at=datetime.now(UTC).isoformat().replace("+00:00", "Z"),
+                completed_at=dt.datetime.now(dt.UTC).isoformat().replace("+00:00", "Z"),
             )
         )
         # Now try to stream a chunk.

@@ -5,7 +5,7 @@
 from __future__ import annotations
 
 import asyncio
-from datetime import UTC, datetime
+import datetime as dt
 from typing import TYPE_CHECKING, Any
 
 from .._errors import ARCPError, InternalError, LeaseExpiredError
@@ -19,7 +19,7 @@ if TYPE_CHECKING:
 
 
 def _now_iso() -> str:
-    return datetime.now(UTC).isoformat().replace("+00:00", "Z")
+    return dt.datetime.now(dt.UTC).isoformat().replace("+00:00", "Z")
 
 
 async def run_job(
@@ -181,7 +181,7 @@ async def _revoke_with_retry(runtime: ARCPRuntime, credential_id: str) -> bool:
 
 async def _lease_watchdog(runtime: ARCPRuntime, job: Job, expires_at_iso: str) -> None:
     expiry = _parse_iso_utc(expires_at_iso)
-    delay = (expiry - datetime.now(UTC)).total_seconds()
+    delay = (expiry - dt.datetime.now(dt.UTC)).total_seconds()
     if delay > 0:
         try:
             await asyncio.sleep(delay)

@@ -4,7 +4,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime
+import datetime as dt
 from typing import TYPE_CHECKING
 
 from .._envelope import Envelope
@@ -28,10 +28,10 @@ async def handle_list_jobs(runtime: ARCPRuntime, ctx: SessionContext, env: Envel
     body = SessionListJobsPayload.model_validate(env.payload)
     limit = body.limit or 100
     offset = int(body.cursor) if body.cursor and body.cursor.isdigit() else 0
-    created_after_dt: datetime | None = None
+    created_after_dt: dt.datetime | None = None
     if body.filter is not None and body.filter.created_after:
         try:
-            created_after_dt = datetime.fromisoformat(body.filter.created_after)
+            created_after_dt = dt.datetime.fromisoformat(body.filter.created_after)
         except ValueError as exc:
             raise InvalidRequestError(
                 f"filter.created_after is not a valid ISO 8601 timestamp: "
@@ -56,7 +56,7 @@ def _filter_jobs(
     ctx: SessionContext,
     body: SessionListJobsPayload,
     auth_cls: type[AuthorizationContext],
-    created_after_dt: datetime | None,
+    created_after_dt: dt.datetime | None,
 ) -> list[Job]:
     # PLR0913: passes the pre-parsed created_after to avoid re-parsing
     # the ISO string for every job in the loop.
@@ -73,7 +73,7 @@ def _filter_jobs(
 
 
 def _matches_filter(
-    job: Job, body: SessionListJobsPayload, created_after_dt: datetime | None
+    job: Job, body: SessionListJobsPayload, created_after_dt: dt.datetime | None
 ) -> bool:
     if body.filter is None:
         return True

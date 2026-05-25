@@ -2,10 +2,10 @@
 
 from __future__ import annotations
 
+import datetime as dt
 import fnmatch
 import re
 from dataclasses import dataclass
-from datetime import UTC, datetime
 from decimal import Decimal
 from typing import Any
 
@@ -53,25 +53,25 @@ def validate_lease_shape(lease: Lease) -> None:
 
 
 def validate_lease_constraints(
-    constraints: LeaseConstraints | None, *, now: datetime | None = None
+    constraints: LeaseConstraints | None, *, now: dt.datetime | None = None
 ) -> None:
     """Reject `expires_at` in the past."""
     if constraints is None or constraints.expires_at is None:
         return
     expiry = _parse_iso_utc(constraints.expires_at)
-    n = now or datetime.now(UTC)
+    n = now or dt.datetime.now(dt.UTC)
     if expiry <= n:
         raise InvalidRequestError(
             f"lease_constraints.expires_at must be in the future: {constraints.expires_at!r}"
         )
 
 
-def _parse_iso_utc(value: str) -> datetime:
+def _parse_iso_utc(value: str) -> dt.datetime:
     # Python 3.11+ `fromisoformat` accepts `Z` natively; no rewrite needed.
-    dt = datetime.fromisoformat(value)
-    if dt.tzinfo is None:
-        dt = dt.replace(tzinfo=UTC)
-    return dt
+    parsed = dt.datetime.fromisoformat(value)
+    if parsed.tzinfo is None:
+        parsed = parsed.replace(tzinfo=dt.UTC)
+    return parsed
 
 
 @dataclass(frozen=True)
@@ -81,7 +81,7 @@ class LeaseOpContext:
     capability: str
     target: str
     cost: dict[str, Decimal] | None = None
-    now: datetime | None = None
+    now: dt.datetime | None = None
 
 
 def _glob_match(patterns: list[str], target: str) -> bool:
@@ -97,7 +97,7 @@ def validate_lease_op(
 ) -> None:
     """Authorize an op against the lease: pattern match, expiry, budget. Raise on violation."""
     if constraints is not None and constraints.expires_at is not None:
-        n = ctx.now or datetime.now(UTC)
+        n = ctx.now or dt.datetime.now(dt.UTC)
         expiry = _parse_iso_utc(constraints.expires_at)
         if n >= expiry:
             raise LeaseExpiredError("lease has expired")

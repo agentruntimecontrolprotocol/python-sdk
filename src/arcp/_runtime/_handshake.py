@@ -5,8 +5,8 @@
 from __future__ import annotations
 
 import asyncio
+import datetime as dt
 import hmac
-from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Any
 
 from .._envelope import Envelope
@@ -26,7 +26,7 @@ if TYPE_CHECKING:
 
 
 def _now_iso() -> str:
-    return datetime.now(UTC).isoformat().replace("+00:00", "Z")
+    return dt.datetime.now(dt.UTC).isoformat().replace("+00:00", "Z")
 
 
 async def perform_handshake(runtime: ARCPRuntime, transport: Any) -> SessionContext:
@@ -104,7 +104,7 @@ async def _perform_resume(  # noqa: PLR0913
             runtime.heartbeat_interval_sec if "heartbeat" in negotiated else None
         ),
         resume_window_sec=runtime.resume_window_sec,
-        accepted_at=datetime.now(UTC),
+        accepted_at=dt.datetime.now(dt.UTC),
     )
     send_queue: asyncio.Queue[Envelope | None] = asyncio.Queue()
     ctx = SessionContext(

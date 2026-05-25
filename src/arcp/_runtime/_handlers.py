@@ -6,7 +6,7 @@ from __future__ import annotations
 
 import asyncio
 import contextlib
-from datetime import UTC, datetime
+import datetime as dt
 from typing import TYPE_CHECKING
 
 from .._envelope import Envelope
@@ -50,7 +50,7 @@ if TYPE_CHECKING:
 
 
 def _now_iso() -> str:
-    return datetime.now(UTC).isoformat().replace("+00:00", "Z")
+    return dt.datetime.now(dt.UTC).isoformat().replace("+00:00", "Z")
 
 
 async def handle_ping(_runtime: ARCPRuntime, ctx: SessionContext, env: Envelope) -> None:

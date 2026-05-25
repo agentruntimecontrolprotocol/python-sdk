@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import contextlib
-from datetime import UTC, datetime
+import datetime as dt
 from unittest.mock import MagicMock
 
 import pytest
@@ -23,7 +23,7 @@ def _make_ctx() -> SessionContext:
         negotiated_features=(),
         heartbeat_interval_sec=None,
         resume_window_sec=60,
-        accepted_at=datetime.now(UTC),
+        accepted_at=dt.datetime.now(dt.UTC),
     )
     transport = MagicMock(spec=Transport)
     return SessionContext(
@@ -58,7 +58,7 @@ async def test_heartbeat_lost_sets_exception_on_outcome() -> None:
     ctx.heartbeat_outcome = loop.create_future()
 
     # Back-date last_inbound_at so gap is always enormous
-    ctx._last_inbound_at = datetime(2000, 1, 1, tzinfo=UTC)
+    ctx._last_inbound_at = dt.datetime(2000, 1, 1, tzinfo=dt.UTC)
 
     # interval=0.05 s, miss_threshold=1 → threshold=0.05 s; gap >> threshold
     with pytest.raises(HeartbeatLostError):
@@ -79,7 +79,7 @@ async def test_heartbeat_loss_without_outcome_future_is_safe() -> None:
     ctx.heartbeat_outcome = None  # no future attached
 
     # Back-date to trigger loss on first check
-    ctx._last_inbound_at = datetime(2000, 1, 1, tzinfo=UTC)
+    ctx._last_inbound_at = dt.datetime(2000, 1, 1, tzinfo=dt.UTC)
 
     with pytest.raises(HeartbeatLostError):
         await asyncio.wait_for(
@@ -123,7 +123,7 @@ async def test_heartbeat_loss_with_done_outcome_does_not_raise_invalid_state() -
     fut.cancel()  # mark future as done (cancelled)
     ctx.heartbeat_outcome = fut
 
-    ctx._last_inbound_at = datetime(2000, 1, 1, tzinfo=UTC)
+    ctx._last_inbound_at = dt.datetime(2000, 1, 1, tzinfo=dt.UTC)
 
     # Should raise HeartbeatLostError without InvalidStateError on the done future.
     with pytest.raises(HeartbeatLostError):

@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
+import datetime as dt
 import re
-from datetime import UTC, datetime
 from decimal import Decimal, InvalidOperation
 from typing import Any, Literal
 
@@ -73,19 +73,19 @@ Lease = dict[str, list[str]]
 """A lease maps capability namespace to a list of glob patterns."""
 
 
-def _ensure_utc_iso8601(value: str) -> datetime:
+def _ensure_utc_iso8601(value: str) -> dt.datetime:
     """Parse a strict UTC ISO 8601 timestamp (`Z` or `+00:00` only).
 
     Python 3.11+ `datetime.fromisoformat` accepts a trailing `Z` natively,
     so no `Z` → `+00:00` rewrite is required.
     """
     try:
-        dt = datetime.fromisoformat(value)
+        parsed = dt.datetime.fromisoformat(value)
     except ValueError as e:
         raise ValueError(f"invalid ISO 8601 timestamp: {value!r}") from e
-    if dt.tzinfo is None or dt.utcoffset() != UTC.utcoffset(dt):
+    if parsed.tzinfo is None or parsed.utcoffset() != dt.UTC.utcoffset(parsed):
         raise ValueError(f"expires_at must be UTC: {value!r}")
-    return dt
+    return parsed
 
 
 class LeaseConstraints(BaseModel):

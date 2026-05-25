@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import base64
+import datetime as dt
 from types import TracebackType
 from typing import TYPE_CHECKING, Literal, Self
 
@@ -18,9 +19,7 @@ _LOG = get_logger("arcp.runtime.result_stream")
 
 
 def _now_iso_z() -> str:
-    from datetime import UTC, datetime
-
-    return datetime.now(UTC).isoformat().replace("+00:00", "Z")
+    return dt.datetime.now(dt.UTC).isoformat().replace("+00:00", "Z")
 
 
 class ResultStream:

@@ -4,9 +4,9 @@ from __future__ import annotations
 
 import asyncio
 import contextlib
+import datetime as dt
 import os
 import sys
-from datetime import UTC, datetime, timedelta
 
 from arcp import ClientInfo, LeaseConstraints, LeaseExpiredError, WebSocketTransport
 from arcp.client import ARCPClient
@@ -25,7 +25,9 @@ async def main() -> int:
     async with contextlib.aclosing(client):
         transport = await WebSocketTransport.connect(URL)
         await client.connect(transport)
-        expires_at = (datetime.now(UTC) + timedelta(seconds=2)).isoformat().replace("+00:00", "Z")
+        expires_at = (
+            (dt.datetime.now(dt.UTC) + dt.timedelta(seconds=2)).isoformat().replace("+00:00", "Z")
+        )
         handle = await client.submit(
             agent="slow",
             lease_constraints=LeaseConstraints(expires_at=expires_at),

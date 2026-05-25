@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
+import datetime as dt
 from collections import deque
-from datetime import UTC, datetime
 from unittest.mock import AsyncMock, MagicMock
 
 from arcp._client.dispatch import (
@@ -46,7 +46,7 @@ def _make_handle(job_id: str) -> JobHandle:
     accepted = JobAcceptedPayload(
         job_id=job_id,
         agent="test-agent",
-        accepted_at=datetime.now(UTC).isoformat().replace("+00:00", "Z"),
+        accepted_at=dt.datetime.now(dt.UTC).isoformat().replace("+00:00", "Z"),
         lease={},
     )
     return JobHandle(job_id=job_id, accepted=accepted)
@@ -54,7 +54,7 @@ def _make_handle(job_id: str) -> JobHandle:
 
 def _ping_envelope(nonce: str | None = None) -> Envelope:
     n = nonce or new_ulid()
-    ping = SessionPingPayload(nonce=n, sent_at=datetime.now(UTC).isoformat())
+    ping = SessionPingPayload(nonce=n, sent_at=dt.datetime.now(dt.UTC).isoformat())
     return Envelope(
         id=new_envelope_id(),
         type="session.ping",
@@ -250,7 +250,7 @@ async def test_on_job_terminal_result_resolves_handle() -> None:
 
     result_payload = JobResultPayload(
         final_status="success",
-        completed_at=datetime.now(UTC).isoformat().replace("+00:00", "Z"),
+        completed_at=dt.datetime.now(dt.UTC).isoformat().replace("+00:00", "Z"),
     )
     env = Envelope(
         id=new_envelope_id(),
@@ -277,7 +277,7 @@ async def test_on_job_terminal_error_rejects_handle() -> None:
         message="agent crashed",
         retryable=False,
         final_status="error",
-        completed_at=datetime.now(UTC).isoformat().replace("+00:00", "Z"),
+        completed_at=dt.datetime.now(dt.UTC).isoformat().replace("+00:00", "Z"),
     )
     env = Envelope(
         id=new_envelope_id(),

@@ -6,7 +6,7 @@ from __future__ import annotations
 
 import asyncio
 import contextlib
-from datetime import UTC, datetime
+import datetime as dt
 from typing import TYPE_CHECKING, Any
 
 from .._envelope import Envelope
@@ -36,7 +36,7 @@ if TYPE_CHECKING:
 
 
 def _now_iso() -> str:
-    return datetime.now(UTC).isoformat().replace("+00:00", "Z")
+    return dt.datetime.now(dt.UTC).isoformat().replace("+00:00", "Z")
 
 
 def _require_transport(client: ARCPClient) -> Transport:

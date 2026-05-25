@@ -3,9 +3,9 @@
 from __future__ import annotations
 
 import asyncio
+import datetime as dt
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, field, replace
-from datetime import UTC, datetime
 from decimal import Decimal, InvalidOperation
 from typing import TYPE_CHECKING, Any, Literal
 
@@ -36,7 +36,7 @@ LogLevel = Literal["debug", "info", "warn", "error"]
 
 
 def _now_iso() -> str:
-    return datetime.now(UTC).isoformat().replace("+00:00", "Z")
+    return dt.datetime.now(dt.UTC).isoformat().replace("+00:00", "Z")
 
 
 @dataclass
@@ -59,7 +59,7 @@ class Job:
     state: JobStateName = "pending"
     chunked_result_started: bool = False
     inline_result_emitted: bool = False
-    submitted_at: datetime = field(default_factory=lambda: datetime.now(UTC))
+    submitted_at: dt.datetime = field(default_factory=lambda: dt.datetime.now(dt.UTC))
     idempotency_key: str | None = None
     # Wire dict of the most-recent terminal envelope (job.result / job.error)
     # this job emitted; used by the idempotency store to replay terminals on
@@ -302,7 +302,7 @@ class JobContext:
         target: str,
         *,
         cost: dict[str, Decimal] | None = None,
-        now: datetime | None = None,
+        now: dt.datetime | None = None,
     ) -> None:
         validate_lease_op(
             self.lease,
@@ -311,7 +311,7 @@ class JobContext:
             budget=self.job.budget if "cost.budget" in self.lease else None,
         )
 
-    def authorize_model(self, model_id: str, *, now: datetime | None = None) -> None:
+    def authorize_model(self, model_id: str, *, now: dt.datetime | None = None) -> None:
         """Authorize an upstream model id against the job's `model.use` lease."""
         validate_lease_op(
             self.lease,

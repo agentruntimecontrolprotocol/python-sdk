@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import contextlib
-from datetime import UTC, datetime, timedelta
+import datetime as dt
 
 from arcp import (
     Capabilities,
@@ -224,7 +224,9 @@ async def test_list_jobs_filter_by_created_after() -> None:
         ctx._send_queue.get_nowait()
 
     # Far-future cutoff → no jobs should match
-    future_cutoff = (datetime.now(UTC) + timedelta(hours=1)).isoformat().replace("+00:00", "Z")
+    future_cutoff = (
+        (dt.datetime.now(dt.UTC) + dt.timedelta(hours=1)).isoformat().replace("+00:00", "Z")
+    )
     env = Envelope(
         id=new_envelope_id(),
         type="session.list_jobs",

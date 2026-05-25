@@ -5,8 +5,8 @@
 from __future__ import annotations
 
 import asyncio
+import datetime as dt
 from collections.abc import Awaitable, Callable
-from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Any
 
 from .._envelope import Envelope
@@ -30,7 +30,7 @@ if TYPE_CHECKING:
 
 
 def _now_iso() -> str:
-    return datetime.now(UTC).isoformat().replace("+00:00", "Z")
+    return dt.datetime.now(dt.UTC).isoformat().replace("+00:00", "Z")
 
 
 Handler = Callable[[Envelope], Awaitable[None]]

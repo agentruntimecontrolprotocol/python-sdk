@@ -39,9 +39,9 @@ handle = await client.submit(
 ## Absolute expiry timestamp
 
 ```python
-from datetime import datetime, timezone, timedelta
+import datetime as dt
 
-expiry = datetime.now(timezone.utc) + timedelta(minutes=5)
+expiry = dt.datetime.now(dt.UTC) + dt.timedelta(minutes=5)
 
 handle = await client.submit(
     agent="slow-agent",

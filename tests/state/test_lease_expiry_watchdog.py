@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import asyncio
-from datetime import UTC, datetime, timedelta
+import datetime as dt
 
 import pytest
 
@@ -19,7 +19,7 @@ async def test_lease_expires_triggers_error(runtime: ARCPRuntime, client: ARCPCl
 
     runtime.register_agent("slow-lease", slow)
     # Expire ~150ms in the future
-    expiry = (datetime.now(UTC) + timedelta(milliseconds=150)).isoformat()
+    expiry = (dt.datetime.now(dt.UTC) + dt.timedelta(milliseconds=150)).isoformat()
     expiry = expiry.replace("+00:00", "Z")
     handle = await client.submit(
         agent="slow-lease",

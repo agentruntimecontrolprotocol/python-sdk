@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import UTC, datetime, timedelta
+import datetime as dt
 from decimal import Decimal
 
 import pytest
@@ -27,11 +27,15 @@ from arcp._runtime.lease import (
 
 
 def _future_iso(hours: int = 1) -> str:
-    return (datetime.now(UTC) + timedelta(hours=hours)).isoformat().replace("+00:00", "Z")
+    return (
+        (dt.datetime.now(dt.UTC) + dt.timedelta(hours=hours)).isoformat().replace("+00:00", "Z")
+    )
 
 
 def _past_iso(hours: int = 1) -> str:
-    return (datetime.now(UTC) - timedelta(hours=hours)).isoformat().replace("+00:00", "Z")
+    return (
+        (dt.datetime.now(dt.UTC) - dt.timedelta(hours=hours)).isoformat().replace("+00:00", "Z")
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -89,8 +93,8 @@ def test_parse_iso_utc_no_timezone_returns_utc() -> None:
     """_parse_iso_utc adds UTC when tzinfo is absent."""
     from arcp._runtime.lease import _parse_iso_utc
 
-    dt = _parse_iso_utc("2024-01-01T00:00:00")
-    assert dt.tzinfo is UTC
+    parsed = _parse_iso_utc("2024-01-01T00:00:00")
+    assert parsed.tzinfo is dt.UTC
 
 
 # ---------------------------------------------------------------------------
