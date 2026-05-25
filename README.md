@@ -3,12 +3,12 @@
 <p align="center"><strong>Python SDK for the Agent Runtime Control Protocol (ARCP) — submit, observe, and control long-running agent jobs from Python.</strong></p>
 
 <p align="center">
-  <a href="https://pypi.org/project/agentruntimecontrolprotocol/"><img alt="PyPI" src="https://img.shields.io/pypi/v/agentruntimecontrolprotocol.svg"></a>
-  <a href="https://pypi.org/project/agentruntimecontrolprotocol/"><img alt="Python versions" src="https://img.shields.io/pypi/pyversions/agentruntimecontrolprotocol.svg"></a>
-  <a href="https://github.com/agentruntimecontrolprotocol/python-sdk/actions/workflows/test.yml"><img alt="CI" src="https://github.com/agentruntimecontrolprotocol/python-sdk/actions/workflows/test.yml/badge.svg"></a>
-  <a href="https://codecov.io/gh/agentruntimecontrolprotocol/python-sdk"><img alt="codecov" src="https://codecov.io/gh/agentruntimecontrolprotocol/python-sdk/graph/badge.svg?token=RHW2K4B7C8"></a>
-  <a href="https://github.com/agentruntimecontrolprotocol/spec/blob/main/docs/draft-arcp-1.1.md"><img alt="ARCP" src="https://img.shields.io/badge/ARCP-v1.1%20draft-blue"></a>
-  <a href="LICENSE"><img alt="License" src="https://img.shields.io/badge/license-Apache--2.0-lightgrey"></a>
+  <a href="https://pypi.org/project/agentruntimecontrolprotocol/"><img alt="PyPI" src="https://img.shields.io/pypi/v/agentruntimecontrolprotocol.svg?cacheSeconds=60"></a>
+  <a href="https://pypi.org/project/agentruntimecontrolprotocol/"><img alt="Python versions" src="https://img.shields.io/pypi/pyversions/agentruntimecontrolprotocol.svg?cacheSeconds=60"></a>
+  <a href="https://github.com/agentruntimecontrolprotocol/python-sdk/actions/workflows/test.yml"><img alt="CI" src="https://github.com/agentruntimecontrolprotocol/python-sdk/actions/workflows/test.yml/badge.svg?branch=main"></a>
+  <a href="https://codecov.io/gh/agentruntimecontrolprotocol/python-sdk"><img alt="codecov" src="https://codecov.io/gh/agentruntimecontrolprotocol/python-sdk/graph/badge.svg?token=RHW2K4B7C8&cacheSeconds=60"></a>
+  <a href="https://github.com/agentruntimecontrolprotocol/spec/blob/main/docs/draft-arcp-1.1.md"><img alt="ARCP" src="https://img.shields.io/badge/ARCP-v1.1%20draft-blue?cacheSeconds=60"></a>
+  <a href="LICENSE"><img alt="License" src="https://img.shields.io/badge/license-Apache--2.0-lightgrey?cacheSeconds=60"></a>
 </p>
 
 <p align="center">
@@ -39,10 +39,24 @@ pip install agentruntimecontrolprotocol
 # in its lockfile or dependency manifest)
 pip install "agentruntimecontrolprotocol[client]"
 pip install "agentruntimecontrolprotocol[runtime]"
+pip install "agentruntimecontrolprotocol[jwks]"
+pip install "agentruntimecontrolprotocol[otel]"
 
 # pytest stack for running the test suite
 pip install "agentruntimecontrolprotocol[test]"
 ```
+
+**Available extras** (as declared in the wheel's `Provides-Extra` metadata):
+
+| Extra | What it adds | When to use |
+|-------|-------------|-------------|
+| `client` | _(none — included by default)_ | Document that a service is a job submitter / observer. |
+| `runtime` | _(none — included by default)_ | Document that a service hosts agents and accepts jobs. |
+| `jwks` | _(none — included by default)_ | Document that a service verifies bearer tokens against a remote JWKS. |
+| `otel` | _(none — included by default)_ | Document that a service emits OpenTelemetry spans through `arcp.middleware.otel`. |
+| `test` | `pytest`, `pytest-cov`, `pytest-asyncio`, `pytest-randomly`, `pytest-timeout`, `hypothesis`, `dirty-equals`, `aiohttp`, `starlette`, `opentelemetry-sdk` | Run the SDK's own pytest suite against an installed wheel. |
+
+> Python extras can only **add** dependencies, not subtract — so the `client` / `runtime` / `jwks` / `otel` extras are no-ops at install time. They exist as semantic markers in lockfiles and dependency manifests, so a consumer can declare *which side of the wire they're using* without affecting what `pip` resolves.
 
 ## Quick start
 
