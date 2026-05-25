@@ -1,6 +1,6 @@
 [project]
 name = "agentruntimecontrolprotocol"
-version = "1.1.0"
+version = "1.1.1"
 description = "Reference Python implementation of the Agent Runtime Control Protocol (ARCP) v1.1"
 readme = "README.md"
 requires-python = ">=3.11"
