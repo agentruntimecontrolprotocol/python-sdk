@@ -1,4 +1,4 @@
-name: Publish to PyPI
+name: Publish
 
 on:
   push:
@@ -6,17 +6,13 @@ on:
       - "v*"
 
 permissions:
-  id-token: write  # Required for OIDC trusted publishing
-  contents: read
+  id-token: write  # OIDC trusted publishing to PyPI
+  contents: write  # Creating GitHub Releases
 
 jobs:
-  build-and-publish:
-    name: Build and publish to PyPI
+  build:
+    name: Build sdist + wheel
     runs-on: ubuntu-latest
-    environment:
-      name: pypi
-      url: https://pypi.org/p/arcp
-
     steps:
       - uses: actions/checkout@v6
 
@@ -31,5 +27,52 @@ jobs:
       - name: Build package
         run: hatch build
 
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: dist/
+
+  publish-pypi:
+    name: Publish to PyPI
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: pypi
+      url: https://pypi.org/p/agentruntimecontrolprotocol
+    steps:
+      - name: Download build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist/
+
       - name: Publish to PyPI
         uses: pypa/gh-action-pypi-publish@release/v1
+
+  publish-github-release:
+    name: Publish GitHub Release
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Download build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist/
+
+      # Attaches the wheel + sdist to a GitHub Release for the pushed
+      # tag. GitHub Packages has no native Python registry, so this is
+      # the "GitHub-hosted" distribution surface — users can
+      # `pip install` directly from the release URL if they need an
+      # off-PyPI source.
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            dist/*.whl
+            dist/*.tar.gz
+          generate_release_notes: true
+          fail_on_unmatched_files: true

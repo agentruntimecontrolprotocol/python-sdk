@@ -1,4 +1,4 @@
-.PHONY: diagrams
+.PHONY: diagrams build clean publish publish-test
 
 DIAGRAMS := arch-overview session-lifecycle job-lifecycle capability-negotiation heartbeat-ack result-chunk-progress
 DIAGRAM_DIR := docs/diagrams
@@ -11,3 +11,15 @@ diagrams:
 		echo "rendering $$name-dark.svg"; \
 		dot -Tsvg $(DIAGRAM_DIR)/$$name-dark.dot  -o $(DIAGRAM_DIR)/$$name-dark.svg; \
 	done
+
+clean:
+	rm -rf dist build *.egg-info
+
+build: clean
+	uv build
+
+# Publish to PyPI. Reads credentials from ~/.pypirc ([pypi] section) by
+# default; override with UV_PUBLISH_TOKEN if you'd rather not touch the
+# rc file. Run `make build` first or this target will fail.
+publish: build
+	uv publish
