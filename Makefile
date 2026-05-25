@@ -1,4 +1,4 @@
-.PHONY: diagrams build clean publish publish-test
+.PHONY: diagrams build clean publish test
 
 DIAGRAMS := arch-overview session-lifecycle job-lifecycle capability-negotiation heartbeat-ack result-chunk-progress
 DIAGRAM_DIR := docs/diagrams
@@ -23,3 +23,10 @@ build: clean
 # rc file. Run `make build` first or this target will fail.
 publish: build
 	uv publish
+
+# Run the test suite with coverage. Equivalent to:
+#   pip install -e .[test,all]
+#   pytest --cov --cov-branch --cov-report=xml
+# but uses `uv run` so the lockfile is honored.
+test:
+	uv run pytest --cov --cov-branch --cov-report=xml

@@ -35,6 +35,18 @@ runtime = [
     { name = "aiosqlite" },
     { name = "pyjwt", extra = ["crypto"] },
 ]
+test = [
+    { name = "aiohttp" },
+    { name = "dirty-equals" },
+    { name = "hypothesis" },
+    { name = "opentelemetry-sdk" },
+    { name = "pytest" },
+    { name = "pytest-asyncio" },
+    { name = "pytest-cov" },
+    { name = "pytest-randomly" },
+    { name = "pytest-timeout" },
+    { name = "starlette" },
+]
 
 [package.dev-dependencies]
 dev = [
@@ -56,21 +68,31 @@ dev = [
 
 [package.metadata]
 requires-dist = [
+    { name = "aiohttp", marker = "extra == 'test'", specifier = ">=3.13.5" },
     { name = "aiosqlite", marker = "extra == 'all'", specifier = ">=0.22.1" },
     { name = "aiosqlite", marker = "extra == 'runtime'", specifier = ">=0.22.1" },
     { name = "click", specifier = ">=8.4.1" },
+    { name = "dirty-equals", marker = "extra == 'test'", specifier = ">=0.11" },
     { name = "httpx", marker = "extra == 'all'", specifier = ">=0.28.1" },
     { name = "httpx", marker = "extra == 'jwks'", specifier = ">=0.28.1" },
+    { name = "hypothesis", marker = "extra == 'test'", specifier = ">=6.152.9" },
     { name = "opentelemetry-api", marker = "extra == 'all'", specifier = ">=1.42.1,<2" },
     { name = "opentelemetry-api", marker = "extra == 'otel'", specifier = ">=1.42.1,<2" },
+    { name = "opentelemetry-sdk", marker = "extra == 'test'", specifier = ">=1.42.1,<2" },
     { name = "pydantic", specifier = ">=2.13.4,<3" },
     { name = "pyjwt", extras = ["crypto"], marker = "extra == 'all'", specifier = ">=2.13.0" },
     { name = "pyjwt", extras = ["crypto"], marker = "extra == 'runtime'", specifier = ">=2.13.0" },
+    { name = "pytest", marker = "extra == 'test'", specifier = ">=9.0.3" },
+    { name = "pytest-asyncio", marker = "extra == 'test'", specifier = ">=1.3.0" },
+    { name = "pytest-cov", marker = "extra == 'test'", specifier = ">=7.1.0" },
+    { name = "pytest-randomly", marker = "extra == 'test'", specifier = ">=4.1.0" },
+    { name = "pytest-timeout", marker = "extra == 'test'", specifier = ">=2.4.0" },
     { name = "python-ulid", specifier = ">=3.1.0" },
+    { name = "starlette", marker = "extra == 'test'", specifier = ">=1.0.1" },
     { name = "structlog", specifier = ">=25.5.0" },
     { name = "websockets", specifier = ">=16.0" },
 ]
-provides-extras = ["client", "runtime", "otel", "jwks", "all"]
+provides-extras = ["client", "runtime", "otel", "jwks", "test", "all"]
 
 [package.metadata.requires-dev]
 dev = [

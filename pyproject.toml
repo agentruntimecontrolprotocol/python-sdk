@@ -36,6 +36,22 @@ otel = [
 ]
 # JWKS fetching for `JWTVerifier` over HTTPS.
 jwks = ["httpx>=0.28.1"]
+# `pip install agentruntimecontrolprotocol[test,all]` — enough to run
+# `pytest --cov --cov-branch --cov-report=xml` against the full suite.
+# Pair with `[all]` so the runtime/jwks deps the integration tests reach
+# for are present.
+test = [
+    "pytest>=9.0.3",
+    "pytest-cov>=7.1.0",
+    "pytest-asyncio>=1.3.0",
+    "pytest-randomly>=4.1.0",
+    "pytest-timeout>=2.4.0",
+    "hypothesis>=6.152.9",
+    "dirty-equals>=0.11",
+    "aiohttp>=3.13.5",
+    "starlette>=1.0.1",
+    "opentelemetry-sdk>=1.42.1,<2",
+]
 # Everything — pulls in runtime + otel + jwks.
 all = [
     "aiosqlite>=0.22.1",
