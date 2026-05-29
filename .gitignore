@@ -12,3 +12,8 @@ build/
 .ruff_cache/
 .pyright/
 .DS_Store
+
+# Generated API docs (see Makefile target `docs-api`). Re-rendered from
+# docstrings by scripts/gen_api_docs.py; the site at ../www builds
+# fresh from python-sdk/docs/**/*.md, so we don't track the output here.
+docs/api/

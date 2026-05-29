@@ -1,4 +1,4 @@
-.PHONY: diagrams build clean publish test
+.PHONY: diagrams build clean publish test docs-api
 
 DIAGRAMS := arch-overview session-lifecycle job-lifecycle capability-negotiation heartbeat-ack result-chunk-progress
 DIAGRAM_DIR := docs/diagrams
@@ -30,3 +30,19 @@ publish: build
 # but uses `uv run` so the lockfile is honored.
 test:
 	uv run pytest --cov --cov-branch --cov-report=xml
+
+# Generate Markdown API docs from docstrings into docs/api/.
+# The site at ../www ingests `<lang>-sdk/docs/**/*.md` at build time,
+# so this target writes one .md per module under docs/api/. Output is
+# .gitignored; re-run whenever public API docstrings change.
+#
+# Requires pydoc-markdown on PATH with arcp's runtime deps injected:
+#   pipx install pydoc-markdown
+#   pipx inject pydoc-markdown pydantic structlog python-ulid websockets \
+#     click aiosqlite 'pyjwt[crypto]' opentelemetry-api httpx
+docs-api:
+	@command -v pydoc-markdown >/dev/null 2>&1 || { \
+		echo "error: pydoc-markdown not found; install with: pipx install pydoc-markdown"; \
+		exit 1; \
+	}
+	python3 scripts/gen_api_docs.py

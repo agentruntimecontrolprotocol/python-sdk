@@ -1,0 +1,53 @@
+# Base pydoc-markdown configuration for arcp.
+#
+# This is the shared loader/processor block consumed by scripts/gen_api_docs.py.
+# The script iterates over every public module under src/arcp, overrides the
+# `modules` list per-invocation, and writes the rendered output to
+# docs/api/<dotted.path>.md so the site generator at ../www can ingest it as
+# `<lang>-sdk/docs/**/*.md`.
+loaders:
+  - type: python
+    search_path: [src]
+processors:
+  # Drop `from x import y` re-exports (docspec calls these Indirection)
+  # so module pages don't list every imported name as if it were a
+  # module-level definition. Keep dunder methods (`__init__`, etc.)
+  # because they carry useful signatures. `do_not_filter_modules`
+  # keeps the module nodes themselves even when their content is
+  # otherwise filtered out (e.g. arcp.client which is purely
+  # re-exports).
+  - type: filter
+    expression: obj.__class__.__name__ != 'Indirection' and name not in ('__all__', '__path__', '__annotations__', '__name__') and (not name.startswith('_') or (name.startswith('__') and name.endswith('__')))
+    documented_only: false
+    do_not_filter_modules: true
+    skip_empty_modules: false
+  - type: smart
+  - type: crossref
+renderer:
+  type: markdown
+  render_module_header: true
+  render_toc: true
+  render_toc_title: ''
+  insert_header_anchors: false
+  descriptive_class_title: false
+  add_method_class_prefix: true
+  add_member_class_prefix: true
+  classdef_with_decorators: true
+  signature_with_decorators: true
+  signature_class_prefix: true
+  signature_with_def: true
+  signature_python_help_style: false
+  # yapf in pydoc-markdown 4.8 does not parse some modern Python syntax
+  # (e.g. PEP 695 type params, certain default expressions) and will
+  # crash with `YapfError: expected '('`. We disable yapf-based
+  # signature reflow; pydoc-markdown still emits a clean ```python
+  # fenced block.
+  format_code: false
+  use_fixed_header_levels: true
+  header_level_by_type:
+    Module: 1
+    Class: 2
+    Method: 3
+    Function: 2
+    Variable: 3
+    Data: 3
