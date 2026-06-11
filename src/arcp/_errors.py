@@ -65,12 +65,25 @@ class AgentVersionNotAvailableError(ARCPError):
     default_retryable = False
 
 
-class CancelledError(ARCPError):
+class ARCPCancelledError(ARCPError):
+    """Job ended due to client cancellation (§12 `CANCELLED`).
+
+    Named `ARCPCancelledError` (not `CancelledError`) so it does not shadow
+    the builtin `CancelledError` / `asyncio.CancelledError` at a call site
+    that does `from arcp import ...`.
+    """
+
     code = "CANCELLED"
     default_retryable = False
 
 
-class TimeoutError(ARCPError):
+class ARCPTimeoutError(ARCPError):
+    """Job exceeded `max_runtime_sec` (§12 `TIMEOUT`).
+
+    Named `ARCPTimeoutError` (not `TimeoutError`) so it does not shadow the
+    builtin `TimeoutError` that `asyncio.timeout`/`wait_for` raise.
+    """
+
     code = "TIMEOUT"
     default_retryable = False
 
@@ -119,8 +132,8 @@ _BY_CODE: dict[str, type[ARCPError]] = {
         DuplicateKeyError,
         AgentNotAvailableError,
         AgentVersionNotAvailableError,
-        CancelledError,
-        TimeoutError,
+        ARCPCancelledError,
+        ARCPTimeoutError,
         ResumeWindowExpiredError,
         HeartbeatLostError,
         LeaseExpiredError,
@@ -154,11 +167,12 @@ def error_from_payload(payload: dict[str, Any]) -> ARCPError:
 
 __all__ = (
     "ERROR_CODES",
+    "ARCPCancelledError",
     "ARCPError",
+    "ARCPTimeoutError",
     "AgentNotAvailableError",
     "AgentVersionNotAvailableError",
     "BudgetExhaustedError",
-    "CancelledError",
     "DuplicateKeyError",
     "HeartbeatLostError",
     "InternalError",
@@ -168,7 +182,6 @@ __all__ = (
     "LeaseSubsetViolationError",
     "PermissionDeniedError",
     "ResumeWindowExpiredError",
-    "TimeoutError",
     "UnauthenticatedError",
     "error_class_for",
     "error_from_payload",
