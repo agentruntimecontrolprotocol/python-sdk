@@ -184,7 +184,9 @@ class JobResultPayload(BaseModel):
     result_id: str | None = None
     result_size: int | None = None
     summary: str | None = None
-    completed_at: str
+    # §8.4 does not define `completed_at`; keep it optional so a conformant
+    # peer that omits it still parses. The SDK still emits it outbound.
+    completed_at: str | None = None
 
 
 class JobErrorPayload(BaseModel):
@@ -193,7 +195,9 @@ class JobErrorPayload(BaseModel):
     code: str
     message: str
     retryable: bool = False
-    completed_at: str
+    # §12 does not define `completed_at`; keep it optional so a conformant
+    # peer that omits it still parses. The SDK still emits it outbound.
+    completed_at: str | None = None
     details: dict[str, Any] | None = None
 
 

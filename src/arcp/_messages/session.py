@@ -67,7 +67,9 @@ class SessionWelcomePayload(BaseModel):
     resume_window_sec: int = Field(default=600, ge=0)
     heartbeat_interval_sec: int | None = None
     capabilities: Capabilities = Field(default_factory=Capabilities)
-    accepted_at: str
+    # §6.2 does not define `accepted_at`; keep it optional so a conformant
+    # runtime that omits it still validates. The SDK still emits it outbound.
+    accepted_at: str | None = None
 
 
 class SessionByePayload(BaseModel):
