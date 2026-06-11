@@ -16,10 +16,10 @@ async def cautious_agent(input: dict, ctx: JobContext) -> dict:
     # Try fs.write to a path NOT covered by the lease (lease only allows fs.read).
     try:
         ctx.authorize("fs.write", "/etc/passwd")
-        outcome = {"output": "wrote"}
+        outcome = {"result": "wrote"}
     except Exception as e:  # PermissionDeniedError
         outcome = {"error": {"code": "PERMISSION_DENIED", "message": str(e), "retryable": False}}
-    await ctx.tool_result({"tool_call_id": "tc1", **outcome})
+    await ctx.tool_result({"call_id": "tc1", **outcome})
     await ctx.log("info", "agent continues after lease violation")
     return {"continued": True}
 

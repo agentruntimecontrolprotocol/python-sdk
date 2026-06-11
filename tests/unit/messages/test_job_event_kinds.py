@@ -4,6 +4,12 @@ from __future__ import annotations
 
 import pytest
 
+from arcp._messages.event_bodies import (
+    ArtifactRefBody,
+    MetricBody,
+    ToolCallBody,
+    ToolResultBody,
+)
 from arcp._messages.execution import (
     EVENT_KINDS,
     JobEventPayload,
@@ -56,3 +62,30 @@ def test_metric_validators() -> None:
         validate_metric_body({"name": "cost.fetch", "value": -0.5})
     with pytest.raises(ValueError):
         validate_metric_body({"name": "", "value": 1})
+
+
+def test_event_body_field_names_match_spec_8_2() -> None:
+    """#67: TypedDict body fields use the §8.2 names verbatim."""
+    assert set(ToolCallBody.__annotations__) == {"tool", "args", "call_id"}
+    assert set(ToolResultBody.__annotations__) == {"call_id", "result", "error"}
+    assert set(MetricBody.__annotations__) == {"name", "value", "unit", "dimensions"}
+    assert set(ArtifactRefBody.__annotations__) == {"uri", "content_type", "byte_size", "sha256"}
+
+
+def test_spec_8_2_example_bodies_round_trip() -> None:
+    """A spec §8.2-shaped body survives wire round-trip without renaming."""
+    bodies = {
+        "tool_call": {"tool": "search", "args": {"q": "x"}, "call_id": "c1"},
+        "tool_result": {"call_id": "c1", "result": {"hits": 3}},
+        "artifact_ref": {
+            "uri": "s3://bucket/report.pdf",
+            "content_type": "application/pdf",
+            "byte_size": 1024,
+            "sha256": "ab" * 32,
+        },
+        "metric": {"name": "tokens.in", "value": 12, "unit": "tokens", "dimensions": {"m": "x"}},
+    }
+    for kind, body in bodies.items():
+        p = JobEventPayload(kind=kind, ts="2026-05-14T12:00:00Z", body=body)
+        reparsed = JobEventPayload.model_validate(p.model_dump(mode="json"))
+        assert reparsed.body == body

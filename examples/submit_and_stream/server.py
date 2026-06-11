@@ -16,16 +16,15 @@ async def echo_agent(input: dict, ctx: JobContext) -> dict:
     await ctx.status("starting")
     await ctx.log("info", "agent received input", attributes={"keys": list((input or {}).keys())})
     await ctx.thought("I will fetch then summarize.")
-    await ctx.tool_call({"tool_call_id": "tc1", "name": "fetch", "arguments": {"url": "x://"}})
-    await ctx.tool_result({"tool_call_id": "tc1", "output": {"bytes": 42}})
+    await ctx.tool_call({"call_id": "tc1", "tool": "fetch", "args": {"url": "x://"}})
+    await ctx.tool_result({"call_id": "tc1", "result": {"bytes": 42}})
     await ctx.metric({"name": "tokens.in", "value": 12, "unit": "tokens"})
     await ctx.job.emit_event(
         "artifact_ref",
         {
-            "artifact_id": "a1",
-            "media_type": "text/plain",
-            "size_bytes": 7,
-            "summary": "report",
+            "uri": "file:///tmp/report.txt",
+            "content_type": "text/plain",
+            "byte_size": 7,
         },
     )
     await ctx.status("complete")

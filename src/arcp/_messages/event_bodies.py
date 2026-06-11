@@ -16,14 +16,16 @@ class ThoughtBody(TypedDict, total=False):
 
 
 class ToolCallBody(TypedDict, total=False):
-    tool_call_id: str
-    name: str
-    arguments: dict[str, Any]
+    # §8.2: { tool, args, call_id }
+    tool: str
+    args: dict[str, Any]
+    call_id: str
 
 
 class ToolResultBody(TypedDict, total=False):
-    tool_call_id: str
-    output: Any
+    # §8.2: { call_id, result | error }
+    call_id: str
+    result: Any
     error: dict[str, Any]
 
 
@@ -33,18 +35,19 @@ class StatusBody(TypedDict, total=False):
 
 
 class MetricBody(TypedDict, total=False):
+    # §8.2: { name, value, unit?, dimensions? }
     name: str
     value: float
     unit: str
-    attributes: dict[str, Any]
+    dimensions: dict[str, Any]
 
 
 class ArtifactRefBody(TypedDict, total=False):
-    artifact_id: str
-    media_type: str
-    size_bytes: int
+    # §8.2: { uri, content_type, byte_size?, sha256? }
     uri: str
-    summary: str
+    content_type: str
+    byte_size: int
+    sha256: str
 
 
 class DelegateBody(TypedDict, total=False):

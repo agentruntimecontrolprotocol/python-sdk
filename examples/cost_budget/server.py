@@ -21,13 +21,13 @@ async def caller(input: dict, ctx: JobContext) -> dict:
         except Exception as e:  # BudgetExhaustedError
             await ctx.tool_result(
                 {
-                    "tool_call_id": f"tc{i}",
+                    "call_id": f"tc{i}",
                     "error": {"code": e.code, "message": str(e), "retryable": False},  # type: ignore[attr-defined]
                 }
             )
             return {"completed": i - 1, "exhausted": True}
         await ctx.metric({"name": "cost.openai", "value": 0.30, "unit": "USD"})
-        await ctx.tool_result({"tool_call_id": f"tc{i}", "output": f"call-{i}"})
+        await ctx.tool_result({"call_id": f"tc{i}", "result": f"call-{i}"})
     return {"completed": 5, "exhausted": False}
 
 

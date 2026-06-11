@@ -111,7 +111,7 @@ async def triage_agent(_input: dict, ctx: JobContext) -> dict:
             if block.type != "tool_use":
                 continue
 
-            await ctx.tool_call({"tool_call_id": block.id, "tool": block.name, "args": block.input})
+            await ctx.tool_call({"call_id": block.id, "tool": block.name, "args": block.input})
 
             try:
                 # the lease grants tool.call only for the read-only tools; the
@@ -121,7 +121,7 @@ async def triage_agent(_input: dict, ctx: JobContext) -> dict:
                 # surface the denial on the ARCP stream as a recoverable error...
                 await ctx.tool_result(
                     {
-                        "tool_call_id": block.id,
+                        "call_id": block.id,
                         "error": {"code": err.code, "message": str(err), "retryable": False},
                     }
                 )
@@ -150,7 +150,7 @@ async def triage_agent(_input: dict, ctx: JobContext) -> dict:
                         "urgency": result["urgency"],
                     },
                 )
-            await ctx.tool_result({"tool_call_id": block.id, "output": result})
+            await ctx.tool_result({"call_id": block.id, "result": result})
             tool_results.append(
                 {"type": "tool_result", "tool_use_id": block.id, "content": str(result)}
             )
