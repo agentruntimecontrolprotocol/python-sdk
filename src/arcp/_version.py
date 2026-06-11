@@ -12,15 +12,15 @@ V1_1_FEATURES: tuple[str, ...] = (
     "subscribe",
     "lease_expires_at",
     "cost.budget",
+    "model.use",
     "progress",
     "result_chunk",
     "agent_versions",
 )
 
-PROVISIONED_CREDENTIAL_FEATURES: tuple[str, ...] = (
-    "model.use",
-    "provisioned_credentials",
-)
+# `model.use` (§9.7) is an independent feature advertised by every runtime;
+# only `provisioned_credentials` (§9.8) is gated on a configured provisioner.
+PROVISIONED_CREDENTIAL_FEATURES: tuple[str, ...] = ("provisioned_credentials",)
 
 
 def features_for_runtime(*, provisioner_configured: bool) -> tuple[str, ...]:

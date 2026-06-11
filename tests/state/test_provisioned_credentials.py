@@ -157,10 +157,46 @@ async def test_advertises_features_only_when_configured() -> None:
         revocation_log=InMemoryRevocationLog(),
     )
     try:
+        # provisioned_credentials (§9.8) is gated on a configured provisioner.
         assert "provisioned_credentials" not in bare.capabilities.features
-        assert "model.use" not in bare.capabilities.features
         assert "provisioned_credentials" in provisioned.capabilities.features
+        # model.use (§9.7) negotiates independently and is advertised by both
+        # a provisioner-less runtime and a provisioned one (#69).
+        assert "model.use" in bare.capabilities.features
         assert "model.use" in provisioned.capabilities.features
     finally:
         await bare.close()
         await provisioned.close()
+
+
+async def test_default_client_and_bare_runtime_negotiate_model_use() -> None:
+    """#69: model.use is negotiated without a credential provisioner."""
+    import asyncio
+    import contextlib
+
+    from arcp import ClientInfo, pair_memory_transports
+    from arcp.client import ARCPClient
+
+    rt = ARCPRuntime(
+        runtime=RuntimeInfo(name="r", version="1"),
+        bearer=StaticBearerVerifier({"tok": "p1"}),
+        heartbeat_interval_sec=None,
+    )
+    server_t, client_t = pair_memory_transports()
+    task = asyncio.create_task(rt.accept(server_t))
+    # Default client capabilities (all v1.1 features).
+    client = ARCPClient(
+        client=ClientInfo(name="c", version="1"),
+        token="tok",
+    )
+    try:
+        await client.connect(client_t)
+        assert client.has_feature("model.use")
+        assert not client.has_feature("provisioned_credentials")
+    finally:
+        with contextlib.suppress(Exception):
+            await client.close()
+        task.cancel()
+        with contextlib.suppress(asyncio.CancelledError, Exception):
+            await task
+        await rt.close()
