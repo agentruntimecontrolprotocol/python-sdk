@@ -56,13 +56,13 @@ jobs:
           enable-cache: true
           cache-dependency-glob: "uv.lock"
 
+      # actions/setup-python has no linux-arm64 builds for self-hosted
+      # runners; uv installs python-build-standalone, which ships arm64.
       - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v6
-        with:
-          python-version: ${{ matrix.python-version }}
+        run: uv python install ${{ matrix.python-version }}
 
       - name: Install project
-        run: uv sync --frozen --all-extras --dev
+        run: uv sync --frozen --all-extras --dev --python ${{ matrix.python-version }}
 
       - name: Ruff lint
         run: uv run ruff check .
