@@ -27,7 +27,6 @@ async def handle_list_jobs(runtime: ARCPRuntime, ctx: SessionContext, env: Envel
 
     body = SessionListJobsPayload.model_validate(env.payload)
     limit = body.limit or 100
-    offset = int(body.cursor) if body.cursor and body.cursor.isdigit() else 0
     created_after_dt: dt.datetime | None = None
     if body.filter is not None and body.filter.created_after:
         try:
@@ -45,9 +44,9 @@ async def handle_list_jobs(runtime: ARCPRuntime, ctx: SessionContext, env: Envel
             created_after_dt = created_after_dt.replace(tzinfo=dt.UTC)
         else:
             created_after_dt = created_after_dt.astimezone(dt.UTC)
-    matching = _filter_jobs(runtime, ctx, body, AuthorizationContext, created_after_dt)
-    page = matching[offset : offset + limit]
-    next_cursor = str(offset + limit) if offset + limit < len(matching) else None
+    page, next_cursor = _collect_page(
+        runtime, ctx, body, AuthorizationContext, created_after_dt, limit, body.cursor
+    )
     entries = tuple(_job_to_entry(j) for j in page)
     payload = SessionJobsPayload(request_id=env.id, jobs=entries, next_cursor=next_cursor)
     out = Envelope(
@@ -59,25 +58,46 @@ async def handle_list_jobs(runtime: ARCPRuntime, ctx: SessionContext, env: Envel
     ctx.stamp_and_enqueue(out)
 
 
-def _filter_jobs(
+def _collect_page(  # noqa: PLR0913
     runtime: ARCPRuntime,
     ctx: SessionContext,
     body: SessionListJobsPayload,
     auth_cls: type[AuthorizationContext],
     created_after_dt: dt.datetime | None,
-) -> list[Job]:
-    # PLR0913: passes the pre-parsed created_after to avoid re-parsing
-    # the ISO string for every job in the loop.
-    out: list[Job] = []
+    limit: int,
+    cursor: str | None,
+) -> tuple[list[Job], str | None]:
+    """Collect at most `limit` matching jobs after the keyset `cursor`.
+
+    `cursor` is the opaque `job_id` of the last entry returned on the prior
+    page. Because `job_id`s are time-sortable ULIDs minted in submission
+    order (the same order `runtime._jobs` iterates), a `job_id > cursor`
+    comparison resumes exactly after the previous page without rescanning
+    and storing every prior match. Materialization is bounded to `limit`
+    jobs (plus a single peek to decide whether a next page exists).
+
+    PLR0913: threads the pre-parsed `created_after`, the resolved `limit`,
+    and the keyset `cursor` so the hot loop neither re-parses the ISO
+    timestamp nor recomputes them per job.
+    """
+    page: list[Job] = []
+    next_cursor: str | None = None
     for job in runtime._jobs.values():
+        if cursor is not None and job.job_id <= cursor:
+            continue
         if not runtime.policy(
             auth_cls(requester_principal=ctx.principal, job=job, operation="list")
         ):
             continue
         if not _matches_filter(job, body, created_after_dt):
             continue
-        out.append(job)
-    return out
+        if len(page) >= limit:
+            # One more match exists beyond this page: resume after the last
+            # entry we are returning.
+            next_cursor = page[-1].job_id
+            break
+        page.append(job)
+    return page, next_cursor
 
 
 def _matches_filter(
