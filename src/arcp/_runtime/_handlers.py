@@ -40,6 +40,7 @@ from .._ulid import new_envelope_id, new_job_id
 from .credentials import Credential, JobCredentialContext
 from .job import Job
 from .lease import (
+    assert_lease_subset,
     echo_budget_for_accept,
     initial_budget_from_lease,
     validate_lease_constraints,
@@ -111,6 +112,7 @@ async def handle_submit(runtime: ARCPRuntime, ctx: SessionContext, env: Envelope
     validate_lease_constraints(submit.lease_constraints)
     if _replay_idempotent(runtime, ctx, env, submit):
         return
+    _enforce_delegation_subset(runtime, ctx, submit)
     agent_fn, name, version = runtime._resolve_agent(submit.agent)
     job, accept_env = await _build_job_and_accept(runtime, ctx, env, submit, name, version)
     if submit.idempotency_key is not None:
@@ -126,6 +128,30 @@ async def handle_submit(runtime: ARCPRuntime, ctx: SessionContext, env: Envelope
         runtime._run_job(job, agent_fn, submit.input, max_runtime_sec=submit.max_runtime_sec)
     )
     runtime._job_tasks[job.job_id] = task
+
+
+def _enforce_delegation_subset(
+    runtime: ARCPRuntime, ctx: SessionContext, submit: JobSubmitPayload
+) -> None:
+    """§9.4/§10: a delegated job's lease must be a strict subset of its parent.
+
+    When `parent_job_id` is set, the child's lease, budget, and expiry are
+    checked against the parent's (which the requester must own). Authority that
+    would exceed the parent is rejected with `LEASE_SUBSET_VIOLATION`; an
+    unknown or foreign parent is rejected with `JOB_NOT_FOUND`.
+    """
+    if submit.parent_job_id is None:
+        return
+    parent = runtime._jobs.get(submit.parent_job_id)
+    if parent is None or parent.submitter_principal != ctx.principal:
+        raise JobNotFoundError(f"unknown parent_job_id: {submit.parent_job_id!r}")
+    assert_lease_subset(
+        submit.lease_request,
+        parent.lease,
+        parent_budget_remaining=parent.budget,
+        parent_constraints=parent.lease_constraints,
+        child_constraints=submit.lease_constraints,
+    )
 
 
 def _replay_idempotent(
