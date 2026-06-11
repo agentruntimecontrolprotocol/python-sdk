@@ -137,8 +137,13 @@ async def _perform_resume(  # noqa: PLR0913
         send_queue=send_queue,
         identity=identity,
     )
-    # Continue stamping event_seq past the latest replayed value.
-    ctx.set_event_seq(record.last_event_seq)
+    # Continue stamping event_seq past the latest value the prior connection
+    # stamped *and* past any events emitted by surviving jobs during the
+    # disconnect window (tracked in `_detached_seq`), so the resumed session's
+    # counter never collides with already-issued seqs (#81).
+    resume_seq = max(record.last_event_seq, runtime._detached_seq.get(record.session_id, 0))
+    runtime._detached_seq.pop(record.session_id, None)
+    ctx.set_event_seq(resume_seq)
     runtime._sessions[ctx.session_id] = ctx
     ctx.stamp_and_enqueue(_build_welcome_envelope(runtime, ctx, welcome_caps, negotiated))
     # Replay everything strictly greater than `resume.last_event_seq` so the

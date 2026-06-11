@@ -98,6 +98,8 @@ def test_v1_1_features_complete() -> None:
         "subscribe",
         "lease_expires_at",
         "cost.budget",
+        # model.use (§9.7) negotiates independently of provisioned_credentials (#69).
+        "model.use",
         "progress",
         "result_chunk",
         "agent_versions",

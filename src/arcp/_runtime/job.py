@@ -48,6 +48,11 @@ class Job:
     lease_constraints: LeaseConstraints | None
     budget: dict[str, Decimal]
     initial_budget: dict[str, Decimal]
+    # The owning runtime, used to resolve the *live* SessionContext for this
+    # job's session at emit time. `session` is the connection the job was
+    # submitted on; after a resume it is a stale pointer (its write pump is
+    # gone), so delivery must look the current session up by id (#81).
+    runtime: ARCPRuntime | None = None
     parent_job_id: str | None = None
     delegate_id: str | None = None
     trace_id: str | None = None
@@ -96,6 +101,25 @@ class Job:
             return True
         return False
 
+    async def _send(self, env: Envelope) -> None:
+        """Route an envelope to the job's *current* session.
+
+        Resolves the live `SessionContext` by id through the runtime so events
+        reach a resumed connection (the originally-bound `session` may be a
+        dead, disconnected context). When no session is currently attached
+        (the disconnect window), the envelope is persisted to the event log so
+        a later resume replays it (#81).
+        """
+        if self.runtime is None:
+            # No runtime wired (unit tests): deliver via the bound session.
+            await self.session.send(env)
+            return
+        live = self.runtime._sessions.get(self.session.session_id)  # pyright: ignore[reportPrivateUsage]
+        if live is not None:
+            await live.send(env)
+        else:
+            await self.runtime._deliver_detached(self.session.session_id, env)  # pyright: ignore[reportPrivateUsage]
+
     async def emit_event(self, kind: str, body: dict[str, Any], *, ts: str | None = None) -> None:
         env = Envelope(
             id=new_envelope_id(),
@@ -105,7 +129,7 @@ class Job:
             trace_id=self.trace_id,
             payload={"kind": kind, "ts": ts or _now_iso(), "body": body},
         )
-        await self.session.send(env)
+        await self._send(env)
 
     async def emit_result(self, payload: JobResultPayload) -> None:
         if self.chunked_result_started and payload.result is not None:
@@ -128,7 +152,7 @@ class Job:
         # Stamp the terminal envelope *before* dispatching so any duplicate
         # idempotent submit that races behind the write pump can replay it.
         self.last_terminal_envelope = env.to_wire()
-        await self.session.send(env)
+        await self._send(env)
 
     async def emit_error(self, payload: JobErrorPayload) -> None:
         env = Envelope(
@@ -142,7 +166,7 @@ class Job:
         self.state = "error"
         # Stamp before dispatch (see emit_result note).
         self.last_terminal_envelope = env.to_wire()
-        await self.session.send(env)
+        await self._send(env)
 
 
 @dataclass

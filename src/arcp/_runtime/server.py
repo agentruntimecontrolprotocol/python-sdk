@@ -171,6 +171,10 @@ class ARCPRuntime:
         self._agents: dict[str, _AgentRegistration] = {}
         self._sessions: dict[str, SessionContext] = {}
         self._resume_records: dict[str, _ResumeRecord] = {}
+        # Continued event_seq per session while it has no live connection, so
+        # events emitted during the disconnect window keep stamping forward and
+        # a resumed session picks up where they left off (#81).
+        self._detached_seq: dict[str, int] = {}
         self._jobs: dict[str, Job] = {}
         self._job_tasks: dict[str, asyncio.Task[Any]] = {}
         self._closed = asyncio.Event()
@@ -266,6 +270,9 @@ class ARCPRuntime:
             negotiated_features=ctx.negotiated_features,
             heartbeat_interval_sec=ctx.state.heartbeat_interval_sec,
         )
+        # Seed the detached counter so events emitted by surviving jobs during
+        # the disconnect window continue stamping past the last live seq (#81).
+        self._detached_seq[ctx.session_id] = ctx.latest_event_seq
 
     def _pop_resumable(self, session_id: str) -> _ResumeRecord | None:
         """Look up and remove an unexpired resume record for `session_id`."""
@@ -278,6 +285,20 @@ class ARCPRuntime:
         for sid in expired:
             self._resume_records.pop(sid, None)
 
+    async def _deliver_detached(self, session_id: str, env: Envelope) -> None:
+        """Persist a job event emitted while its session has no live connection.
+
+        Stamps the next session-scoped event_seq (continuing past the last seq
+        the live session stamped) and appends to the event log so a resume
+        replays it without a gap. There is no transport to send to yet.
+        """
+        if env.type in {"job.event", "job.result", "job.error"} and env.event_seq is None:
+            seq = self._detached_seq.get(session_id, 0) + 1
+            self._detached_seq[session_id] = seq
+            env = env.model_copy(update={"event_seq": seq})
+        with contextlib.suppress(Exception):
+            await self.event_log.append(session_id, env.to_wire())
+
     async def _reclaim_expired_event_logs(self) -> None:
         """Drop event-log buffers for sessions whose resume window has elapsed.
 
@@ -289,6 +310,7 @@ class ARCPRuntime:
         expired = [sid for sid, rec in self._resume_records.items() if rec.expires_at <= now]
         for sid in expired:
             self._resume_records.pop(sid, None)
+            self._detached_seq.pop(sid, None)
             with contextlib.suppress(Exception):
                 await self.event_log.drop_session(sid)
 

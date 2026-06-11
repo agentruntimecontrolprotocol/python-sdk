@@ -223,6 +223,7 @@ async def _build_job_and_accept(  # noqa: PLR0913
     job = Job(
         job_id=job_id,
         session=ctx,
+        runtime=runtime,
         agent=name,
         agent_version=version,
         lease=submit.lease_request,
@@ -370,7 +371,10 @@ async def handle_subscribe(runtime: ARCPRuntime, ctx: SessionContext, env: Envel
         AuthorizationContext(requester_principal=ctx.principal, job=job, operation="subscribe")
     ):
         raise PermissionDeniedError("not authorized to subscribe to this job")
-    job.session.add_subscriber(job.job_id, ctx)
+    # Attach the subscriber to the job owner's *live* session: if the owner
+    # resumed on a new connection, `job.session` is a stale pointer (#81).
+    owner = runtime._sessions.get(job.session.session_id, job.session)
+    owner.add_subscriber(job.job_id, ctx)
     replayed = await _replay_history(runtime, ctx, job, sub) if sub.history else 0
     subscribed = JobSubscribedPayload(
         request_id=env.id,

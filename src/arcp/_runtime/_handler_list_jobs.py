@@ -67,23 +67,29 @@ def _collect_page(  # noqa: PLR0913
     limit: int,
     cursor: str | None,
 ) -> tuple[list[Job], str | None]:
-    """Collect at most `limit` matching jobs after the keyset `cursor`.
+    """Collect at most `limit` matching jobs after the cursor `job_id`.
 
     `cursor` is the opaque `job_id` of the last entry returned on the prior
-    page. Because `job_id`s are time-sortable ULIDs minted in submission
-    order (the same order `runtime._jobs` iterates), a `job_id > cursor`
-    comparison resumes exactly after the previous page without rescanning
-    and storing every prior match. Materialization is bounded to `limit`
-    jobs (plus a single peek to decide whether a next page exists).
+    page. `runtime._jobs` is an insertion-ordered dict (submission order), so
+    we resume by skipping forward to the cursor's position and continuing —
+    this is stable regardless of `job_id` lexical ordering (ULIDs are not
+    guaranteed monotonic within a millisecond). Only the page itself is
+    materialized (bounded to `limit`, plus a single peek for `next_cursor`);
+    prior matches are never collected or stored.
 
     PLR0913: threads the pre-parsed `created_after`, the resolved `limit`,
-    and the keyset `cursor` so the hot loop neither re-parses the ISO
-    timestamp nor recomputes them per job.
+    and the cursor so the hot loop neither re-parses the ISO timestamp nor
+    recomputes them per job.
     """
     page: list[Job] = []
     next_cursor: str | None = None
+    started = cursor is None
     for job in runtime._jobs.values():
-        if cursor is not None and job.job_id <= cursor:
+        if not started:
+            # Skip forward (by insertion-order position) to just past the
+            # cursor returned on the prior page.
+            if job.job_id == cursor:
+                started = True
             continue
         if not runtime.policy(
             auth_cls(requester_principal=ctx.principal, job=job, operation="list")

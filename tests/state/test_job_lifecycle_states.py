@@ -43,5 +43,9 @@ async def test_cancel_running(runtime: ARCPRuntime, client: ARCPClient) -> None:
     handle = await client.submit(agent="slow")
     await started.wait()
     await client.cancel_job(handle.job_id)
-    result = await handle.done
-    assert result.final_status == "cancelled"
+    # §7.4: cancellation is surfaced as job.error/CANCELLED, so the terminal
+    # future raises the mapped error (#65).
+    from arcp import ARCPCancelledError
+
+    with pytest.raises(ARCPCancelledError):
+        await handle.done

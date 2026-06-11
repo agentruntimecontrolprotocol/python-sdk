@@ -61,6 +61,7 @@ async def run_session(runtime: ARCPRuntime, transport: Transport) -> None:
         else:
             # No resume window: the buffered event log is unreachable, so
             # release it immediately instead of leaking it (#89).
+            runtime._detached_seq.pop(ctx.session_id, None)
             with contextlib.suppress(Exception):
                 await runtime.event_log.drop_session(ctx.session_id)
         # Reclaim event logs for any sessions whose resume window has elapsed.
