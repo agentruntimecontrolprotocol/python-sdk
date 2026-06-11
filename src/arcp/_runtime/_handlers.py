@@ -6,7 +6,6 @@ from __future__ import annotations
 
 import asyncio
 import contextlib
-import datetime as dt
 from typing import TYPE_CHECKING
 
 from .._envelope import Envelope
@@ -34,6 +33,7 @@ from .._messages.session import (
     SessionPingPayload,
     SessionPongPayload,
 )
+from .._time import now_iso_z as _now_iso
 from .._ulid import new_envelope_id, new_job_id
 from .credentials import Credential, JobCredentialContext
 from .job import Job
@@ -47,10 +47,6 @@ from .lease import (
 if TYPE_CHECKING:
     from .server import ARCPRuntime
     from .session import SessionContext, SubscriberLink
-
-
-def _now_iso() -> str:
-    return dt.datetime.now(dt.UTC).isoformat().replace("+00:00", "Z")
 
 
 async def handle_ping(_runtime: ARCPRuntime, ctx: SessionContext, env: Envelope) -> None:

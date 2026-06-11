@@ -17,16 +17,13 @@ from .._messages.session import (
     SessionResume,
     SessionWelcomePayload,
 )
+from .._time import now_iso_z as _now_iso
 from .._ulid import new_envelope_id, new_resume_token
 from .._version import intersect_features
 from .session import SessionContext, SessionState, make_session_state
 
 if TYPE_CHECKING:
     from .server import ARCPRuntime
-
-
-def _now_iso() -> str:
-    return dt.datetime.now(dt.UTC).isoformat().replace("+00:00", "Z")
 
 
 async def perform_handshake(runtime: ARCPRuntime, transport: Any) -> SessionContext:

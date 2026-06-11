@@ -5,7 +5,6 @@
 from __future__ import annotations
 
 import asyncio
-import datetime as dt
 from collections.abc import Awaitable, Callable
 from typing import TYPE_CHECKING, Any
 
@@ -22,15 +21,12 @@ from .._messages.session import (
     SessionPingPayload,
     SessionPongPayload,
 )
+from .._time import now_iso_z as _now_iso
 from .._ulid import new_envelope_id
 from .handles import JobHandle
 
 if TYPE_CHECKING:
     from .client import ARCPClient
-
-
-def _now_iso() -> str:
-    return dt.datetime.now(dt.UTC).isoformat().replace("+00:00", "Z")
 
 
 Handler = Callable[[Envelope], Awaitable[None]]

@@ -3,23 +3,19 @@
 from __future__ import annotations
 
 import base64
-import datetime as dt
 from types import TracebackType
 from typing import TYPE_CHECKING, Literal, Self
 
 from .._errors import InvalidRequestError
 from .._logger import get_logger
 from .._messages.execution import JobResultPayload
+from .._time import now_iso_z as _now_iso_z
 
 if TYPE_CHECKING:
     from .job import JobContext
 
 
 _LOG = get_logger("arcp.runtime.result_stream")
-
-
-def _now_iso_z() -> str:
-    return dt.datetime.now(dt.UTC).isoformat().replace("+00:00", "Z")
 
 
 class ResultStream:

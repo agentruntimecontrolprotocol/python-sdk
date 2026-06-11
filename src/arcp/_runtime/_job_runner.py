@@ -10,16 +10,13 @@ from typing import TYPE_CHECKING, Any
 
 from .._errors import ARCPError, InternalError, LeaseExpiredError
 from .._messages.execution import JobErrorPayload, JobResultPayload
+from .._time import now_iso_z as _now_iso
 from .credentials import UpstreamBudgetExhausted
 from .job import Agent, Job, JobContext
 from .lease import _parse_iso_utc
 
 if TYPE_CHECKING:
     from .server import ARCPRuntime
-
-
-def _now_iso() -> str:
-    return dt.datetime.now(dt.UTC).isoformat().replace("+00:00", "Z")
 
 
 async def run_job(

@@ -21,6 +21,7 @@ from .._messages.execution import (
     validate_progress_body,
     validate_result_chunk_body,
 )
+from .._time import now_iso_z as _now_iso
 from .._ulid import new_envelope_id, new_result_id
 from .lease import LeaseOpContext, validate_lease_op
 
@@ -33,10 +34,6 @@ _LOG = get_logger("arcp.runtime.job")
 
 JobStateName = Literal["pending", "running", "success", "error", "cancelled", "timed_out"]
 LogLevel = Literal["debug", "info", "warn", "error"]
-
-
-def _now_iso() -> str:
-    return dt.datetime.now(dt.UTC).isoformat().replace("+00:00", "Z")
 
 
 @dataclass

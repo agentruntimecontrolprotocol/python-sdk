@@ -6,7 +6,6 @@ from __future__ import annotations
 
 import asyncio
 import contextlib
-import datetime as dt
 from typing import TYPE_CHECKING, Any
 
 from .._envelope import Envelope
@@ -27,16 +26,13 @@ from .._messages.session import (
     SessionJobsPayload,
     SessionListJobsPayload,
 )
+from .._time import now_iso_z as _now_iso
 from .._transport.base import Transport
 from .._ulid import new_envelope_id
 from .handles import JobHandle, JobSubscription
 
 if TYPE_CHECKING:
     from .client import ARCPClient
-
-
-def _now_iso() -> str:
-    return dt.datetime.now(dt.UTC).isoformat().replace("+00:00", "Z")
 
 
 def _require_transport(client: ARCPClient) -> Transport:
