@@ -41,6 +41,9 @@ def build_dispatch_table(client: ARCPClient) -> dict[str, Handler]:
         "session.ping": lambda e: _on_session_ping(client, e),
         "session.pong": _on_noop,
         "session.error": lambda e: _on_session_error(client, e),
+        # §6.7 graceful close: `session.closed` is the runtime's ack; legacy
+        # peers may still send `session.bye`.
+        "session.closed": lambda e: _on_session_bye(client, e),
         "session.bye": lambda e: _on_session_bye(client, e),
         "session.jobs": lambda e: _on_session_jobs(client, e),
         "job.subscribed": lambda e: _on_job_subscribed(client, e),

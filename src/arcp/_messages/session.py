@@ -72,10 +72,23 @@ class SessionWelcomePayload(BaseModel):
     accepted_at: str | None = None
 
 
-class SessionByePayload(BaseModel):
+class SessionClosePayload(BaseModel):
+    """Client request to close the session gracefully (§6.7)."""
+
     model_config = ConfigDict(extra="allow")
     reason: str
     code: str | None = None
+
+
+# Backward-compatible alias for the prior `session.bye` payload shape.
+SessionByePayload = SessionClosePayload
+
+
+class SessionClosedPayload(BaseModel):
+    """Runtime acknowledgement of `session.close` (§6.7)."""
+
+    model_config = ConfigDict(extra="allow")
+    reason: str | None = None
 
 
 class SessionErrorPayload(BaseModel):
@@ -141,6 +154,8 @@ __all__ = (
     "RuntimeInfo",
     "SessionAckPayload",
     "SessionByePayload",
+    "SessionClosePayload",
+    "SessionClosedPayload",
     "SessionErrorPayload",
     "SessionHelloPayload",
     "SessionJobsPayload",

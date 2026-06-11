@@ -394,7 +394,7 @@ class ARCPClient:
         return self._highest_seq
 
     async def close(self, *, reason: str = "client.close") -> None:
-        """Send `session.bye`, close the transport, and fail any open handles."""
+        """Send `session.close`, close the transport, and fail any open handles."""
         from .ops import close_session
 
         await close_session(self, reason=reason)

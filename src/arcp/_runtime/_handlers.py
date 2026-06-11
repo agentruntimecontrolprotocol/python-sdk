@@ -29,10 +29,12 @@ from .._messages.execution import (
 )
 from .._messages.session import (
     SessionAckPayload,
-    SessionByePayload,
+    SessionClosedPayload,
+    SessionClosePayload,
     SessionPingPayload,
     SessionPongPayload,
 )
+from .._transport.base import TransportClosed
 from .._time import now_iso_z as _now_iso
 from .._ulid import new_envelope_id, new_job_id
 from .credentials import Credential, JobCredentialContext
@@ -81,8 +83,22 @@ async def handle_ack(runtime: ARCPRuntime, ctx: SessionContext, env: Envelope) -
         )
 
 
-async def handle_bye(_runtime: ARCPRuntime, ctx: SessionContext, env: Envelope) -> None:
-    SessionByePayload.model_validate(env.payload)
+async def handle_close(_runtime: ARCPRuntime, ctx: SessionContext, env: Envelope) -> None:
+    # §6.7: acknowledge `session.close` with `session.closed`, then tear the
+    # transport down. In-flight jobs keep running and remain resumable. The
+    # ack is sent directly (not via the write pump) so it is flushed before
+    # the transport closes.
+    close = SessionClosePayload.model_validate(env.payload)
+    closed = Envelope(
+        id=new_envelope_id(),
+        type="session.closed",
+        session_id=ctx.session_id,
+        payload=SessionClosedPayload(reason=close.reason).model_dump(
+            mode="json", exclude_none=True
+        ),
+    )
+    with contextlib.suppress(TransportClosed):
+        await ctx.transport.send(closed.to_wire())
     await ctx.transport.close()
 
 
@@ -376,8 +392,8 @@ async def handle_unsubscribe(runtime: ARCPRuntime, ctx: SessionContext, env: Env
 
 __all__ = (
     "handle_ack",
-    "handle_bye",
     "handle_cancel",
+    "handle_close",
     "handle_list_jobs",
     "handle_ping",
     "handle_submit",

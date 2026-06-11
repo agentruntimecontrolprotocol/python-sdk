@@ -241,7 +241,7 @@ class ARCPRuntime:
     async def accept(self, transport: Transport) -> None:
         """Drive one full session over `transport` — handshake, dispatch, teardown.
 
-        Returns when the session ends (peer sends `session.bye`, the
+        Returns when the session ends (peer sends `session.close`, the
         transport closes, heartbeat is lost, or the runtime is closed).
         Spawn one task per inbound connection.
         """
@@ -335,7 +335,9 @@ from . import _handlers  # noqa: E402
 _DISPATCH_TABLE: dict[
     str, tuple[str | None, Callable[[ARCPRuntime, SessionContext, Envelope], Any]]
 ] = {
-    "session.bye": (None, _handlers.handle_bye),
+    "session.close": (None, _handlers.handle_close),
+    # Legacy alias for clients still emitting the pre-§6.7 close verb.
+    "session.bye": (None, _handlers.handle_close),
     "session.ping": (None, _handlers.handle_ping),
     "session.ack": (None, _handlers.handle_ack),
     "session.list_jobs": ("list_jobs", _handlers.handle_list_jobs),

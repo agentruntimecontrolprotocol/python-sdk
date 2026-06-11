@@ -20,6 +20,8 @@ from .execution import (
 from .session import (
     SessionAckPayload,
     SessionByePayload,
+    SessionClosedPayload,
+    SessionClosePayload,
     SessionErrorPayload,
     SessionHelloPayload,
     SessionJobsPayload,
@@ -32,6 +34,8 @@ from .session import (
 PAYLOAD_REGISTRY: dict[str, type[BaseModel]] = {
     "session.hello": SessionHelloPayload,
     "session.welcome": SessionWelcomePayload,
+    "session.close": SessionClosePayload,
+    "session.closed": SessionClosedPayload,
     "session.bye": SessionByePayload,
     "session.error": SessionErrorPayload,
     "session.ping": SessionPingPayload,

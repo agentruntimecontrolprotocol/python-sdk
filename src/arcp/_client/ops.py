@@ -203,7 +203,7 @@ async def ack(client: ARCPClient, last_processed_seq: int) -> None:
 
 
 async def close_session(client: ARCPClient, *, reason: str = "client.close") -> None:
-    from .._messages.session import SessionByePayload
+    from .._messages.session import SessionClosePayload
     from .._transport.base import TransportClosed
 
     if client._closed:
@@ -211,12 +211,14 @@ async def close_session(client: ARCPClient, *, reason: str = "client.close") -> 
     client._closed = True
     if client._transport is not None and not client._transport.is_closed:
         try:
-            bye = SessionByePayload(reason=reason)
+            # §6.7: graceful close uses `session.close` (acked by the runtime
+            # with `session.closed`).
+            close = SessionClosePayload(reason=reason)
             env = Envelope(
                 id=new_envelope_id(),
-                type="session.bye",
+                type="session.close",
                 session_id=client._session_id,
-                payload=bye.model_dump(mode="json", exclude_none=True),
+                payload=close.model_dump(mode="json", exclude_none=True),
             )
             await client._transport.send(env.to_wire())
         except TransportClosed:
