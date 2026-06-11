@@ -110,8 +110,22 @@ async def handle_submit(runtime: ARCPRuntime, ctx: SessionContext, env: Envelope
     submit = JobSubmitPayload.model_validate(env.payload)
     validate_lease_shape(submit.lease_request)
     validate_lease_constraints(submit.lease_constraints)
-    if _replay_idempotent(runtime, ctx, env, submit):
+    if submit.idempotency_key is None:
+        await _build_and_launch(runtime, ctx, env, submit)
         return
+    # §7.2: serialize check-and-store for a given (principal, key) across the
+    # awaiting job build (e.g. credential issuance) so two concurrent same-key
+    # submits — which a single principal may make over multiple sessions —
+    # cannot both miss the store and create duplicate jobs.
+    async with runtime.idempotency.lock_for(ctx.principal, submit.idempotency_key):
+        if _replay_idempotent(runtime, ctx, env, submit):
+            return
+        await _build_and_launch(runtime, ctx, env, submit)
+
+
+async def _build_and_launch(
+    runtime: ARCPRuntime, ctx: SessionContext, env: Envelope, submit: JobSubmitPayload
+) -> None:
     _enforce_delegation_subset(runtime, ctx, submit)
     agent_fn, name, version = runtime._resolve_agent(submit.agent)
     job, accept_env = await _build_job_and_accept(runtime, ctx, env, submit, name, version)

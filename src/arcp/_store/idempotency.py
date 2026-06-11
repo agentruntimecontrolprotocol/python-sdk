@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import dataclasses
 import json
 import time
@@ -34,11 +35,26 @@ class IdempotencyStore:
     ttl_sec: float = 24 * 60 * 60
     _by_key: dict[tuple[str, str], IdempotencyEntry] = field(default_factory=dict)  # pyright: ignore[reportUnknownVariableType]
     _by_job_id: dict[str, tuple[str, str]] = field(default_factory=dict)  # pyright: ignore[reportUnknownVariableType]
+    _locks: dict[tuple[str, str], asyncio.Lock] = field(default_factory=dict)  # pyright: ignore[reportUnknownVariableType]
 
     @staticmethod
     def fingerprint(submit_payload: dict[str, Any]) -> str:
         """Hash-stable canonical serialization of the submit payload."""
         return json.dumps(submit_payload, sort_keys=True, separators=(",", ":"))
+
+    def lock_for(self, principal: str, key: str) -> asyncio.Lock:
+        """Return the per-(principal, key) lock that serializes check-and-store.
+
+        Holding this lock across the (possibly awaiting) job build closes the
+        get→put race so two concurrent same-key submits cannot both miss the
+        store and mint duplicate jobs / double-issue credentials (§7.2).
+        """
+        loc = (principal, key)
+        lock = self._locks.get(loc)
+        if lock is None:
+            lock = asyncio.Lock()
+            self._locks[loc] = lock
+        return lock
 
     def _sweep(self) -> None:
         now = time.time()
@@ -46,6 +62,11 @@ class IdempotencyStore:
         for k in expired:
             entry = self._by_key.pop(k)
             self._by_job_id.pop(entry.job_id, None)
+            lock = self._locks.get(k)
+            # Drop the lock only when nobody is holding/awaiting it, so a slow
+            # in-flight submit past TTL is not stranded.
+            if lock is not None and not lock.locked():
+                self._locks.pop(k, None)
 
     def get(self, principal: str, key: str) -> IdempotencyEntry | None:
         self._sweep()
