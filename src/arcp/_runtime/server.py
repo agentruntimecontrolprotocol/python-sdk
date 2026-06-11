@@ -274,6 +274,20 @@ class ARCPRuntime:
         for sid in expired:
             self._resume_records.pop(sid, None)
 
+    async def _reclaim_expired_event_logs(self) -> None:
+        """Drop event-log buffers for sessions whose resume window has elapsed.
+
+        The only other reclamation path is `release_through` (driven by the
+        optional `ack` feature); without this, a no-ack workload grows the
+        event log without bound (#89). Called on each session teardown.
+        """
+        now = time.time()
+        expired = [sid for sid, rec in self._resume_records.items() if rec.expires_at <= now]
+        for sid in expired:
+            self._resume_records.pop(sid, None)
+            with contextlib.suppress(Exception):
+                await self.event_log.drop_session(sid)
+
     async def _dispatch(self, ctx: SessionContext, env: Envelope) -> None:
         t = env.type
         if t == "session.hello":

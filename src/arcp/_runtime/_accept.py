@@ -55,8 +55,16 @@ async def run_session(runtime: ARCPRuntime, transport: Transport) -> None:
     finally:
         send_queue.put_nowait(None)
         runtime._sessions.pop(ctx.session_id, None)
-        # Stash a resume record so the peer can rejoin within the window.
-        runtime._record_resume(ctx)
+        if runtime.resume_window_sec > 0:
+            # Stash a resume record so the peer can rejoin within the window.
+            runtime._record_resume(ctx)
+        else:
+            # No resume window: the buffered event log is unreachable, so
+            # release it immediately instead of leaking it (#89).
+            with contextlib.suppress(Exception):
+                await runtime.event_log.drop_session(ctx.session_id)
+        # Reclaim event logs for any sessions whose resume window has elapsed.
+        await runtime._reclaim_expired_event_logs()
 
 
 async def _accept_or_close(runtime: ARCPRuntime, transport: Transport) -> SessionContext | None:
