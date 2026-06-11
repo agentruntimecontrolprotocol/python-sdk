@@ -49,7 +49,7 @@ from .lease import (
 
 if TYPE_CHECKING:
     from .server import ARCPRuntime
-    from .session import SessionContext, SubscriberLink
+    from .session import SessionContext
 
 
 async def handle_ping(_runtime: ARCPRuntime, ctx: SessionContext, env: Envelope) -> None:
@@ -370,8 +370,8 @@ async def handle_subscribe(runtime: ARCPRuntime, ctx: SessionContext, env: Envel
         AuthorizationContext(requester_principal=ctx.principal, job=job, operation="subscribe")
     ):
         raise PermissionDeniedError("not authorized to subscribe to this job")
-    link = job.session.add_subscriber(job.job_id, ctx)
-    replayed = await _replay_history(runtime, ctx, job, link, sub) if sub.history else 0
+    job.session.add_subscriber(job.job_id, ctx)
+    replayed = await _replay_history(runtime, ctx, job, sub) if sub.history else 0
     subscribed = JobSubscribedPayload(
         request_id=env.id,
         job_id=job.job_id,
@@ -380,7 +380,8 @@ async def handle_subscribe(runtime: ARCPRuntime, ctx: SessionContext, env: Envel
         lease=job.lease,
         parent_job_id=job.parent_job_id,
         trace_id=job.trace_id,
-        subscribed_from=link.next_seq,
+        # The subscriber's own session-scoped seq watermark after any replay.
+        subscribed_from=ctx.latest_event_seq,
         replayed=replayed,
     )
     out = Envelope(
@@ -397,11 +398,8 @@ async def _replay_history(
     runtime: ARCPRuntime,
     ctx: SessionContext,
     job: Job,
-    link: SubscriberLink,
     sub: JobSubscribePayload,
 ) -> int:
-    # PLR0913: this is a closely-bound helper for handle_subscribe that
-    # threads through the per-subscription state it needs.
     from_seq = sub.from_event_seq if sub.from_event_seq is not None else 0
     replayed = 0
     async for replayed_env_dict in runtime.event_log.read_since_seq(
@@ -409,12 +407,13 @@ async def _replay_history(
     ):
         if replayed_env_dict.get("job_id") != job.job_id:
             continue
-        link.next_seq += 1
+        # Clear event_seq so the subscriber session stamps its own (§8.3):
+        # the merged stream stays strictly monotonic and gap-free.
         forward = Envelope.from_wire(replayed_env_dict).model_copy(
             update={
                 "id": new_envelope_id(),
                 "session_id": ctx.session_id,
-                "event_seq": link.next_seq,
+                "event_seq": None,
             }
         )
         ctx.stamp_and_enqueue(forward)

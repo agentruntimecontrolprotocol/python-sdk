@@ -5,7 +5,10 @@ from __future__ import annotations
 import asyncio
 import contextlib
 
+import pytest
+
 from arcp import (
+    ARCPCancelledError,
     Capabilities,
     ClientInfo,
     RuntimeInfo,
@@ -61,9 +64,10 @@ async def test_subscriber_cancel_denied() -> None:
         await b.cancel_job(handle.job_id)
         await asyncio.sleep(0.2)
         assert not cancel_observed.is_set()
-        # A can cancel.
+        # A can cancel; cancellation surfaces as job.error/CANCELLED (§7.4).
         await a.cancel_job(handle.job_id)
-        await handle.done
+        with pytest.raises(ARCPCancelledError):
+            await handle.done
         assert cancel_observed.is_set()
     finally:
         for cli in (a, b):

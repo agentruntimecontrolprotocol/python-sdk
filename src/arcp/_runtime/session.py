@@ -22,10 +22,13 @@ _LOG = get_logger("arcp.runtime.session")
 
 @dataclass
 class SubscriberLink:
-    """Per-subscriber-session fan-out state for one job subscription."""
+    """Per-subscriber-session fan-out state for one job subscription.
+
+    Forwarded events are stamped by the subscriber session's own single
+    `event_seq` counter (§8.3), so there is no per-link sequence counter.
+    """
 
     subscriber_session: SessionContext
-    next_seq: int = 0  # subscriber-scoped event_seq counter (0 = unset; first event uses 1)
 
 
 @dataclass
@@ -119,13 +122,16 @@ class SessionContext:
             return
         for link in list(subs.values()):
             sub = link.subscriber_session
-            link.next_seq += 1
             payload = _redact_subscriber_payload(env.payload)
+            # Forward with event_seq cleared so the *subscriber's* single
+            # session counter stamps it (§8.3). A per-link counter would
+            # collide with the subscriber's own events and with other
+            # subscriptions sharing the same session stream.
             forward = env.model_copy(
                 update={
                     "id": new_envelope_id(),
                     "session_id": sub.session_id,
-                    "event_seq": link.next_seq,
+                    "event_seq": None,
                     "payload": payload,
                 }
             )
