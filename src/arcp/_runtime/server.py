@@ -109,6 +109,8 @@ class ARCPRuntime:
         idempotency_ttl_sec: TTL for entries in the idempotency store.
         max_concurrent_jobs: Cap on simultaneous running agent tasks.
         chunk_size_cap: Per-`result_chunk` size cap (spec §14 SHOULD).
+        lease_expiry_grace_sec: Bounded grace window (§14) added to
+            `expires_at` enforcement to absorb small clock skew.
         job_authorization_policy: Hook controlling list/subscribe/cancel
             visibility (defaults to same-principal).
         event_log: Storage for replayable envelopes. Defaults to
@@ -134,6 +136,7 @@ class ARCPRuntime:
         idempotency_ttl_sec: float = 24 * 60 * 60,
         max_concurrent_jobs: int = 100,
         chunk_size_cap: int = 1024 * 1024,
+        lease_expiry_grace_sec: float = 1.0,
         job_authorization_policy: JobAuthorizationPolicy | None = None,
         event_log: EventLog | None = None,
         credential_provisioner: CredentialProvisioner | None = None,
@@ -159,6 +162,7 @@ class ARCPRuntime:
         self.resume_window_sec = resume_window_sec
         self.max_concurrent_jobs = max_concurrent_jobs
         self.chunk_size_cap = chunk_size_cap
+        self.lease_expiry_grace_sec = lease_expiry_grace_sec
         self.idempotency = IdempotencyStore(ttl_sec=idempotency_ttl_sec)
         self.event_log: EventLog = event_log if event_log is not None else InMemoryEventLog()
         self.policy = job_authorization_policy or _default_authz_policy

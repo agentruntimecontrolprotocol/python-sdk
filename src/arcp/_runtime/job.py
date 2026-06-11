@@ -306,6 +306,7 @@ class JobContext:
             LeaseOpContext(capability=capability, target=target, cost=cost, now=now),
             constraints=self.lease_constraints,
             budget=self.job.budget if "cost.budget" in self.lease else None,
+            grace_sec=self.runtime.lease_expiry_grace_sec,
         )
 
     def authorize_model(self, model_id: str, *, now: dt.datetime | None = None) -> None:
@@ -314,6 +315,7 @@ class JobContext:
             self.lease,
             LeaseOpContext(capability="model.use", target=model_id, now=now),
             constraints=self.lease_constraints,
+            grace_sec=self.runtime.lease_expiry_grace_sec,
         )
 
     async def rotate_credential(self, credential_id: str, new_value: str) -> None:

@@ -201,7 +201,9 @@ async def _revoke_with_retry(runtime: ARCPRuntime, credential_id: str) -> bool:
 
 async def _lease_watchdog(runtime: ARCPRuntime, job: Job, expires_at_iso: str) -> None:
     expiry = _parse_iso_utc(expires_at_iso)
-    delay = (expiry - dt.datetime.now(dt.UTC)).total_seconds()
+    # Apply the same bounded grace (§14) the op-check uses so the proactive
+    # watchdog does not fire ahead of an authority-bearing op-time check.
+    delay = (expiry - dt.datetime.now(dt.UTC)).total_seconds() + runtime.lease_expiry_grace_sec
     if delay > 0:
         try:
             await asyncio.sleep(delay)
@@ -209,6 +211,8 @@ async def _lease_watchdog(runtime: ARCPRuntime, job: Job, expires_at_iso: str) -
             return
     if job.state != "running":
         return
+    # §14: log lease expirations for audit.
+    runtime.logger.info("lease_expired", job_id=job.job_id, expires_at=expires_at_iso)
     await job.emit_error(
         JobErrorPayload(
             code="LEASE_EXPIRED",

@@ -209,17 +209,27 @@ def _glob_lang_subset(child: str, parent: str) -> bool:
     return True
 
 
+DEFAULT_EXPIRY_GRACE_SEC: float = 1.0
+"""Bounded grace window applied to `expires_at` enforcement (§14).
+
+`expires_at` is an absolute ISO timestamp, so its comparison is inherently
+wall-clock; deployments rely on NTP discipline. The grace absorbs small clock
+skew (e.g. an NTP step) so a barely-unexpired lease is not spuriously rejected.
+"""
+
+
 def validate_lease_op(
     lease: Lease,
     ctx: LeaseOpContext,
     *,
     constraints: LeaseConstraints | None = None,
     budget: dict[str, Decimal] | None = None,
+    grace_sec: float = DEFAULT_EXPIRY_GRACE_SEC,
 ) -> None:
     """Authorize an op against the lease: pattern match, expiry, budget. Raise on violation."""
     if constraints is not None and constraints.expires_at is not None:
         n = ctx.now or dt.datetime.now(dt.UTC)
-        expiry = _parse_iso_utc(constraints.expires_at)
+        expiry = _parse_iso_utc(constraints.expires_at) + dt.timedelta(seconds=grace_sec)
         if n >= expiry:
             raise LeaseExpiredError("lease has expired")
 
