@@ -3,10 +3,10 @@
 from __future__ import annotations
 
 import datetime as dt
-import fnmatch
 import re
 from dataclasses import dataclass
 from decimal import Decimal
+from functools import lru_cache
 from typing import Any
 
 from .._errors import (
@@ -84,8 +84,129 @@ class LeaseOpContext:
     now: dt.datetime | None = None
 
 
+_GlobToken = tuple[str, str]  # ("lit", ch) | ("star", "") | ("globstar", "")
+
+# Capabilities whose targets are filesystem paths; canonicalized (incl. `..`
+# resolution) before matching so traversal cannot escape a segment-anchored
+# grant. URL/name capabilities (net.fetch, tool.call, model.use, ...) are
+# matched verbatim so their `//` and structure survive.
+_PATH_CAPABILITIES: frozenset[str] = frozenset({"fs.read", "fs.write"})
+
+
+def _tokenize_glob(pattern: str) -> tuple[_GlobToken, ...]:
+    """Split a lease glob into literal / `*` (single-segment) / `**` tokens."""
+    tokens: list[_GlobToken] = []
+    i = 0
+    n = len(pattern)
+    while i < n:
+        if pattern[i] == "*":
+            if i + 1 < n and pattern[i + 1] == "*":
+                tokens.append(("globstar", ""))
+                i += 2
+            else:
+                tokens.append(("star", ""))
+                i += 1
+        else:
+            tokens.append(("lit", pattern[i]))
+            i += 1
+    return tuple(tokens)
+
+
+@lru_cache(maxsize=4096)
+def _compile_glob(pattern: str) -> re.Pattern[str]:
+    """Compile a lease glob to an anchored regex.
+
+    `*` matches within a single path segment (`[^/]*`) and `**` matches across
+    separators (`.*`), so a single `*` no longer authorizes deeper paths.
+    """
+    parts: list[str] = []
+    for kind, ch in _tokenize_glob(pattern):
+        if kind == "lit":
+            parts.append(re.escape(ch))
+        elif kind == "star":
+            parts.append("[^/]*")
+        else:
+            parts.append(".*")
+    return re.compile("".join(parts))
+
+
 def _glob_match(patterns: list[str], target: str) -> bool:
-    return any(fnmatch.fnmatchcase(target, p) for p in patterns)
+    return any(_compile_glob(p).fullmatch(target) is not None for p in patterns)
+
+
+def _glob_alphabet(*token_lists: tuple[_GlobToken, ...]) -> tuple[str, ...]:
+    lits = {ch for tokens in token_lists for kind, ch in tokens if kind == "lit"}
+    syms: set[str] = set(lits)
+    syms.add("/")
+    # A representative non-slash character that is not used as any literal, so
+    # `*`/`**` can be distinguished from a concrete literal in the product.
+    other = "\x00"
+    while other in lits or other == "/":
+        other = chr(ord(other) + 1)
+    syms.add(other)
+    return tuple(syms)
+
+
+def _eps_closure(tokens: tuple[_GlobToken, ...], states: frozenset[int]) -> frozenset[int]:
+    # `*`/`**` may match the empty string, so they carry an epsilon edge to the
+    # next position.
+    seen = set(states)
+    stack = list(states)
+    while stack:
+        s = stack.pop()
+        if s < len(tokens) and tokens[s][0] in ("star", "globstar") and s + 1 not in seen:
+            seen.add(s + 1)
+            stack.append(s + 1)
+    return frozenset(seen)
+
+
+def _glob_step(
+    tokens: tuple[_GlobToken, ...], states: frozenset[int], symbol: str
+) -> frozenset[int]:
+    out: set[int] = set()
+    for s in states:
+        if s >= len(tokens):
+            continue
+        kind, ch = tokens[s]
+        if kind == "lit":
+            if symbol == ch:
+                out.add(s + 1)
+        elif kind == "star":
+            if symbol != "/":  # single segment: never crosses a separator
+                out.add(s)
+        else:  # globstar consumes any character, including '/'
+            out.add(s)
+    return _eps_closure(tokens, frozenset(out))
+
+
+@lru_cache(maxsize=4096)
+def _glob_lang_subset(child: str, parent: str) -> bool:
+    """True iff every concrete target matched by `child` is matched by `parent`.
+
+    Decided exactly via a product walk over the two glob automata on a finite
+    symbolic alphabet (each literal char, `/`, and one representative other
+    non-slash char). If a reachable product state accepts in the child but not
+    the parent, the child can name a resource the parent cannot — not a subset.
+    """
+    ct = _tokenize_glob(child)
+    pt = _tokenize_glob(parent)
+    alphabet = _glob_alphabet(ct, pt)
+    start = (_eps_closure(ct, frozenset({0})), _eps_closure(pt, frozenset({0})))
+    seen = {start}
+    stack = [start]
+    while stack:
+        cs, ps = stack.pop()
+        if len(ct) in cs and len(pt) not in ps:
+            return False
+        for sym in alphabet:
+            ncs = _glob_step(ct, cs, sym)
+            if not ncs:
+                continue  # child can match nothing further on this path
+            nxt = (ncs, _glob_step(pt, ps, sym))
+            if nxt not in seen:
+                seen.add(nxt)
+                stack.append(nxt)
+    return True
 
 
 def validate_lease_op(
@@ -103,7 +224,14 @@ def validate_lease_op(
             raise LeaseExpiredError("lease has expired")
 
     patterns = lease.get(ctx.capability)
-    if not patterns or not _glob_match(patterns, ctx.target):
+    # Filesystem targets are canonicalized (resolving `..`) so traversal cannot
+    # escape a segment-anchored grant before matching.
+    target = (
+        canonicalize_target(ctx.target)
+        if ctx.capability in _PATH_CAPABILITIES
+        else ctx.target
+    )
+    if not patterns or not _glob_match(patterns, target):
         raise PermissionDeniedError(
             f"operation {ctx.capability}:{ctx.target} not permitted by lease"
         )
@@ -126,20 +254,15 @@ def initial_budget_from_lease(lease: Lease) -> dict[str, Decimal]:
 
 
 def _is_subset_pattern(child_patterns: list[str], parent_patterns: list[str]) -> bool:
-    """A child's pattern is a subset iff every concrete match is also matched by parent."""
-    # Conservative implementation: each child pattern must equal a parent pattern,
-    # be a strict literal prefix of one (no wildcards in parent prefix), or be
-    # entirely matched by a parent glob containing `*`.
+    """Each child pattern's language must be contained in some parent pattern.
+
+    Subset means "every concrete resource the child pattern can match is also
+    matched by a parent pattern" (§9.4) — decided structurally via glob-language
+    containment, not by matching the child *pattern string* against the parent
+    glob (which let a wider child like `/data/**` pass under `/data/*`).
+    """
     for cp in child_patterns:
-        ok = False
-        for pp in parent_patterns:
-            if cp == pp:
-                ok = True
-                break
-            if "*" in pp and fnmatch.fnmatchcase(cp, pp):
-                ok = True
-                break
-        if not ok:
+        if not any(_glob_lang_subset(cp, pp) for pp in parent_patterns):
             return False
     return True
 
@@ -216,11 +339,31 @@ def assert_lease_subset(
 
 
 def canonicalize_target(target: str) -> str:
-    """Normalize a target string (collapse `//`, strip trailing slash). Used for matching."""
-    out = re.sub(r"/+", "/", target)
+    """Normalize a path target before matching.
+
+    Collapses repeated slashes, resolves `.`/`..` segments (so traversal
+    cannot escape a grant), and strips a trailing slash.
+    """
+    collapsed = re.sub(r"/+", "/", target)
+    leading = collapsed.startswith("/")
+    resolved: list[str] = []
+    for seg in collapsed.split("/"):
+        if seg in ("", "."):
+            continue
+        if seg == "..":
+            if resolved and resolved[-1] != "..":
+                resolved.pop()
+            elif not leading:
+                resolved.append("..")
+            # leading-slash with nothing to pop clamps at root.
+            continue
+        resolved.append(seg)
+    out = "/".join(resolved)
+    if leading:
+        out = "/" + out
     if len(out) > 1 and out.endswith("/"):
         out = out[:-1]
-    return out
+    return out if out else ("/" if leading else "")
 
 
 def echo_budget_for_accept(
