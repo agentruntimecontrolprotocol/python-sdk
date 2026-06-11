@@ -26,8 +26,11 @@ from .event_bodies import (
     validate_result_chunk_body,
 )
 
-_AGENT_NAME_RE = re.compile(r"^[a-zA-Z][a-zA-Z0-9._-]*$")
-_AGENT_VERSION_RE = re.compile(r"^[a-zA-Z0-9][a-zA-Z0-9._-]*$")
+# §7.5 grammar:
+#   name    ::= [a-z0-9][a-z0-9._-]*
+#   version ::= [a-zA-Z0-9.+_-]+
+_AGENT_NAME_RE = re.compile(r"^[a-z0-9][a-z0-9._-]*$")
+_AGENT_VERSION_RE = re.compile(r"^[a-zA-Z0-9.+_-]+$")
 
 
 def parse_agent_ref(ref: str) -> tuple[str, str | None]:
