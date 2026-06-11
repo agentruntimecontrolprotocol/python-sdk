@@ -113,7 +113,18 @@ async def _finalize_cancelled(job: Job) -> None:
 
 async def _finalize_failure(runtime: ARCPRuntime, job: Job, exc: BaseException) -> None:
     if isinstance(exc, TimeoutError):
-        await job.emit_result(JobResultPayload(final_status="timed_out", completed_at=_now_iso()))
+        # §12/§7.3: a job exceeding max_runtime_sec is a terminal `job.error`
+        # with code `TIMEOUT` and `final_status: timed_out` (mirrors §7.4).
+        await job.emit_error(
+            JobErrorPayload(
+                code="TIMEOUT",
+                message="job exceeded max_runtime_sec",
+                retryable=False,
+                final_status="timed_out",
+                completed_at=_now_iso(),
+            )
+        )
+        # `emit_error` sets state to "error"; restore the §7.3 terminal state.
         job.state = "timed_out"
         return
     if isinstance(exc, LeaseExpiredError):

@@ -10,6 +10,8 @@ from typing import Any
 import pytest
 
 from arcp import (
+    ARCPCancelledError,
+    ARCPTimeoutError,
     Capabilities,
     ClientInfo,
     InternalError,
@@ -122,8 +124,15 @@ async def test_revoke_called_on_terminal_states(mode: str) -> None:
         )
         if mode == "cancelled":
             await client.cancel_job(handle.job_id)
-        if mode == "error":
-            with pytest.raises(InternalError):
+        # §7.4/§12: cancellation and timeout are terminal job.error envelopes,
+        # so awaiting the handle raises the mapped error.
+        expected_exc: type[Exception] | None = {
+            "error": InternalError,
+            "cancelled": ARCPCancelledError,
+            "timed_out": ARCPTimeoutError,
+        }.get(mode)
+        if expected_exc is not None:
+            with pytest.raises(expected_exc):
                 await handle.done
         else:
             await handle.done
