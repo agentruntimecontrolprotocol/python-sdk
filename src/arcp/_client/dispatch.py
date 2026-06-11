@@ -75,7 +75,16 @@ async def _on_session_ping(client: ARCPClient, env: Envelope) -> None:
 
 
 async def _on_session_error(client: ARCPClient, env: Envelope) -> None:
-    client._fail_all_handles(error_from_payload(env.payload))
+    err = error_from_payload(env.payload)
+    details = env.payload.get("details")
+    request_id = details.get("request_id") if isinstance(details, dict) else None
+    # A per-request dispatch failure (e.g. an unknown agent on one submit)
+    # carries the originating request_id; fail only that request so unrelated
+    # in-flight job handles keep running (#71). Errors without a request_id
+    # are treated as session-fatal and fail everything.
+    if isinstance(request_id, str) and client._fail_request(request_id, err):
+        return
+    client._fail_all_handles(err)
 
 
 async def _on_session_bye(client: ARCPClient, _env: Envelope) -> None:

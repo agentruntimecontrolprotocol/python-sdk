@@ -235,6 +235,21 @@ class ARCPClient:
             self._dispatch_cache = build_dispatch_table(self)
         return self._dispatch_cache
 
+    def _fail_request(self, request_id: str, exc: BaseException) -> bool:
+        """Fail only the request correlated by `request_id`.
+
+        Returns True if a pending submit future or a pending request-registry
+        waiter matched. Leaves already-accepted, still-running job handles
+        untouched (#71) so an unrelated per-request failure does not abort
+        concurrent jobs.
+        """
+        fut = self._pending_accepts.pop(request_id, None)
+        if fut is not None:
+            if not fut.done():
+                fut.set_exception(exc)
+            return True
+        return self._pending.reject(request_id, exc)
+
     def _fail_all_handles(self, exc: BaseException) -> None:
         for h in list(self._handles.values()):
             h._reject_terminal(exc)  # pyright: ignore[reportPrivateUsage]

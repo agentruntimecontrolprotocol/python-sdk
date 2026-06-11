@@ -115,20 +115,30 @@ async def _dispatch_one(runtime: ARCPRuntime, ctx: SessionContext, env: Envelope
     try:
         await runtime._dispatch(ctx, env)
     except ARCPError as e:
-        await _emit_session_error(ctx, e)
+        await _emit_session_error(ctx, e, request_id=env.id)
     except Exception as e:
         runtime.logger.exception("dispatch_failed", error=str(e))
-        await _emit_session_error(ctx, InternalError(str(e)))
+        await _emit_session_error(ctx, InternalError(str(e)), request_id=env.id)
 
 
-async def _emit_session_error(ctx: SessionContext, err: ARCPError) -> None:
+async def _emit_session_error(
+    ctx: SessionContext, err: ARCPError, *, request_id: str | None = None
+) -> None:
+    # Carry the originating envelope id so the client can fail only the
+    # offending request instead of every in-flight handle (#71 / §6).
+    details = dict(err.details) if err.details else {}
+    if request_id is not None:
+        details.setdefault("request_id", request_id)
     env = Envelope(
         id=new_envelope_id(),
         type="session.error",
         session_id=ctx.session_id,
         payload=SessionErrorPayload(
-            code=err.code, message=err.message, retryable=err.retryable
-        ).model_dump(mode="json"),
+            code=err.code,
+            message=err.message,
+            retryable=err.retryable,
+            details=details or None,
+        ).model_dump(mode="json", exclude_none=True),
     )
     ctx.stamp_and_enqueue(env)
 
