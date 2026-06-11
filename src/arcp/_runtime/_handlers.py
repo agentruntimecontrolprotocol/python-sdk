@@ -10,7 +10,6 @@ from typing import TYPE_CHECKING
 
 from .._envelope import Envelope
 from .._errors import (
-    AgentVersionNotAvailableError,
     DuplicateKeyError,
     InternalError,
     InvalidRequestError,
@@ -95,10 +94,7 @@ async def handle_submit(runtime: ARCPRuntime, ctx: SessionContext, env: Envelope
     validate_lease_constraints(submit.lease_constraints)
     if _replay_idempotent(runtime, ctx, env, submit):
         return
-    try:
-        agent_fn, name, version = runtime._resolve_agent(submit.agent)
-    except AgentVersionNotAvailableError:
-        raise
+    agent_fn, name, version = runtime._resolve_agent(submit.agent)
     job, accept_env = await _build_job_and_accept(runtime, ctx, env, submit, name, version)
     if submit.idempotency_key is not None:
         runtime.idempotency.put(

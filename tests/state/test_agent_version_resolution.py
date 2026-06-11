@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pytest
 
-from arcp import AgentVersionNotAvailableError
+from arcp import AgentNotAvailableError, AgentVersionNotAvailableError
 from arcp.client import ARCPClient
 from arcp.runtime import ARCPRuntime
 
@@ -41,3 +41,10 @@ async def test_missing_version_raises(runtime: ARCPRuntime, client: ARCPClient) 
     runtime.register_agent_version("ver-c", "2.0.0", agent)
     with pytest.raises(AgentVersionNotAvailableError):
         await client.submit(agent="ver-c@3.0.0")
+
+
+async def test_unknown_agent_raises(runtime: ARCPRuntime, client: ARCPClient) -> None:
+    # #73: with the redundant try/except removed, an unknown agent still
+    # surfaces as a session.error mapped to AgentNotAvailableError client-side.
+    with pytest.raises(AgentNotAvailableError):
+        await client.submit(agent="never-registered")
