@@ -258,6 +258,60 @@ async def test_list_jobs_filter_by_created_after() -> None:
     await rt.close()
 
 
+async def test_list_jobs_naive_created_after_does_not_raise() -> None:
+    """#72: a tz-naive created_after is treated as UTC, not surfaced as INTERNAL_ERROR."""
+    from arcp._runtime._handlers import handle_list_jobs
+
+    rt = _make_rt()
+    started = asyncio.Event()
+
+    async def slow_agent(input_value, ctx):
+        started.set()
+        await asyncio.sleep(10)
+
+    rt.register_agent("slow", slow_agent)
+    client, accept_task, welcome = await _setup(rt)
+
+    await client.submit(agent="slow")
+    await asyncio.wait_for(started.wait(), timeout=2.0)
+
+    ctx = rt._sessions[welcome.session_id]
+    while not ctx._send_queue.empty():
+        ctx._send_queue.get_nowait()
+
+    # Naive timestamp (no offset) in the past → job submitted now should match.
+    naive_past = (dt.datetime.now(dt.UTC) - dt.timedelta(hours=1)).replace(tzinfo=None).isoformat()
+    env = Envelope(
+        id=new_envelope_id(),
+        type="session.list_jobs",
+        session_id=welcome.session_id,
+        payload=SessionListJobsPayload(
+            filter=ListJobsFilter(created_after=naive_past)
+        ).model_dump(mode="json", exclude_none=True),
+    )
+    # Must not raise (previously: TypeError → INTERNAL_ERROR).
+    await handle_list_jobs(rt, ctx, env)
+
+    found = False
+    while True:
+        try:
+            item = ctx._send_queue.get_nowait()
+        except asyncio.QueueEmpty:
+            break
+        if item is not None and item.type == "session.error":
+            raise AssertionError(f"unexpected session.error: {item.payload}")
+        if item is not None and item.type == "session.jobs":
+            assert len(item.payload.get("jobs", [])) >= 1
+            found = True
+    assert found, "expected session.jobs in queue"
+
+    await client.close()
+    accept_task.cancel()
+    with contextlib.suppress(asyncio.CancelledError, Exception):
+        await accept_task
+    await rt.close()
+
+
 async def test_list_jobs_cursor_pagination() -> None:
     """Cursor pagination returns next_cursor when more jobs remain."""
     from arcp._runtime._handlers import handle_list_jobs

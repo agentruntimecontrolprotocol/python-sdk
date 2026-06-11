@@ -37,6 +37,14 @@ async def handle_list_jobs(runtime: ARCPRuntime, ctx: SessionContext, env: Envel
                 f"filter.created_after is not a valid ISO 8601 timestamp: "
                 f"{body.filter.created_after!r}"
             ) from exc
+        # `job.submitted_at` is tz-aware UTC; a client may send a naive
+        # timestamp (no offset). Assume UTC for naive input so the comparison
+        # in `_matches_filter` never raises (would otherwise become
+        # INTERNAL_ERROR). Convert offset-aware input to UTC.
+        if created_after_dt.tzinfo is None:
+            created_after_dt = created_after_dt.replace(tzinfo=dt.UTC)
+        else:
+            created_after_dt = created_after_dt.astimezone(dt.UTC)
     matching = _filter_jobs(runtime, ctx, body, AuthorizationContext, created_after_dt)
     page = matching[offset : offset + limit]
     next_cursor = str(offset + limit) if offset + limit < len(matching) else None
