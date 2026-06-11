@@ -45,6 +45,8 @@ def build_dispatch_table(client: ARCPClient) -> dict[str, Handler]:
         "session.jobs": lambda e: _on_session_jobs(client, e),
         "job.subscribed": lambda e: _on_job_subscribed(client, e),
         "job.accepted": lambda e: _on_job_accepted(client, e),
+        # §7.4 cancel ack; the terminal job.error(CANCELLED) resolves the handle.
+        "job.cancelled": _on_noop,
         "job.event": lambda e: _on_job_event(client, e),
         "job.result": lambda e: _on_job_terminal(client, e, terminal_kind="result"),
         "job.error": lambda e: _on_job_terminal(client, e, terminal_kind="error"),

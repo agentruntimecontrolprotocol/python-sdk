@@ -166,6 +166,14 @@ class JobCancelPayload(BaseModel):
     code: str | None = None
 
 
+class JobCancelledPayload(BaseModel):
+    """Runtime acknowledgement of a `job.cancel` request (§7.4)."""
+
+    model_config = ConfigDict(extra="allow")
+    job_id: str
+    request_id: str | None = None
+
+
 class JobEventPayload(BaseModel):
     model_config = ConfigDict(extra="allow")
     kind: str
@@ -194,7 +202,10 @@ class JobResultPayload(BaseModel):
 
 class JobErrorPayload(BaseModel):
     model_config = ConfigDict(extra="allow")
-    final_status: Literal["error"] = "error"
+    # §7.4 cancellation and §7.3/§12 timeout are surfaced as `job.error` with
+    # `final_status` reflecting the terminal state (`cancelled` / `timed_out`),
+    # not always `error`.
+    final_status: Literal["error", "cancelled", "timed_out"] = "error"
     code: str
     message: str
     retryable: bool = False
@@ -237,6 +248,7 @@ __all__ = (
     "DelegateBody",
     "JobAcceptedPayload",
     "JobCancelPayload",
+    "JobCancelledPayload",
     "JobErrorPayload",
     "JobEventPayload",
     "JobResultPayload",

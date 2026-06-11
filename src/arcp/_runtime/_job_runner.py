@@ -96,7 +96,19 @@ async def _invoke_agent(
 async def _finalize_cancelled(job: Job) -> None:
     if job.state != "running":
         return
-    await job.emit_result(JobResultPayload(final_status="cancelled", completed_at=_now_iso()))
+    # §7.4: cancellation is surfaced as `job.error` with code `CANCELLED` and
+    # `final_status: cancelled` (not a `job.result`).
+    await job.emit_error(
+        JobErrorPayload(
+            code="CANCELLED",
+            message="job cancelled by client",
+            retryable=False,
+            final_status="cancelled",
+            completed_at=_now_iso(),
+        )
+    )
+    # `emit_error` sets state to "error"; restore the §7.3 terminal state.
+    job.state = "cancelled"
 
 
 async def _finalize_failure(runtime: ARCPRuntime, job: Job, exc: BaseException) -> None:

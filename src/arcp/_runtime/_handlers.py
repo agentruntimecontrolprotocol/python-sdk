@@ -20,6 +20,7 @@ from .._messages.execution import (
     CredentialConstraintsPayload,
     CredentialPayload,
     JobAcceptedPayload,
+    JobCancelledPayload,
     JobCancelPayload,
     JobSubmitPayload,
     JobSubscribedPayload,
@@ -283,6 +284,20 @@ async def handle_cancel(runtime: ARCPRuntime, ctx: SessionContext, env: Envelope
             job_id=env.job_id,
         )
         return
+    # §7.4: acknowledge the cancel with `job.cancelled` before tearing the
+    # task down. The subsequent terminal `job.error(CANCELLED)` is emitted by
+    # the job runner's `_finalize_cancelled`.
+    ack = Envelope(
+        id=new_envelope_id(),
+        type="job.cancelled",
+        session_id=ctx.session_id,
+        job_id=job.job_id,
+        trace_id=job.trace_id,
+        payload=JobCancelledPayload(job_id=job.job_id, request_id=env.id).model_dump(
+            mode="json", exclude_none=True
+        ),
+    )
+    ctx.stamp_and_enqueue(ack)
     task = runtime._job_tasks.get(env.job_id)
     if task is not None and not task.done():
         task.cancel()
