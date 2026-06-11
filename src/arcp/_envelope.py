@@ -1,10 +1,10 @@
-"""ARCP wire envelope (spec §5.1): 8 fields, `arcp` constant, mutable pydantic model.
+"""ARCP wire envelope (spec §5): 8 fields, `arcp` constant, mutable pydantic model.
 
 The model is intentionally mutable (frozen=False) so the runtime can stamp
 routing metadata (event_seq, session_id) in place on the hot send path and
 copy with `model_copy(update=...)` for replay/forwarding. The set of fields
-is fixed by spec §5.1; `extra="allow"` preserves forward-compatible vendor
-extensions verbatim.
+is fixed by spec §5 (Wire Format); `extra="allow"` preserves
+forward-compatible vendor extensions verbatim.
 """
 
 from __future__ import annotations
@@ -31,7 +31,7 @@ def _is_valid_trace_id(value: str) -> bool:
 
 
 class Envelope(BaseModel):
-    """Outer envelope for every wire frame. 8 fields per spec §5.1.
+    """Outer envelope for every wire frame. 8 fields per spec §5.
 
     The model stays mutable so runtime code can stamp routing metadata
     and copy envelopes with `model_copy(update=...)` when needed.

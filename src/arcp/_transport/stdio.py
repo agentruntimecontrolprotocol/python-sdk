@@ -1,4 +1,4 @@
-"""Newline-delimited JSON over stdin/stdout per spec §4.2."""
+"""Newline-delimited JSON over stdin/stdout per spec §4 (Transport)."""
 
 from __future__ import annotations
 

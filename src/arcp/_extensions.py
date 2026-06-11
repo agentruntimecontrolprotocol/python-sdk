@@ -1,10 +1,15 @@
-"""Extension key classifier for `x-vendor.*` and `arcpx.*` namespaces (spec §15)."""
+"""Extension key classifier for `x-vendor.*` and `arcpx.*` namespaces.
+
+These extension-key namespaces are an SDK convention layered on the spec's
+forward-compatibility rule (§5, ignore unknown fields); they are not defined
+by a normative spec section.
+"""
 
 from __future__ import annotations
 
 
 def is_vendor_extension(key: str) -> bool:
-    """True if `key` is in the `x-vendor.<vendor>.*` namespace per spec §15."""
+    """True if `key` is in the `x-vendor.<vendor>.*` namespace (SDK convention)."""
     return key.startswith("x-vendor.")
 
 
