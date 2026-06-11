@@ -5,12 +5,18 @@
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import datetime as dt
 import hmac
+import time
 from typing import TYPE_CHECKING, Any
 
 from .._envelope import Envelope
-from .._errors import InvalidRequestError, PermissionDeniedError
+from .._errors import (
+    InvalidRequestError,
+    PermissionDeniedError,
+    ResumeWindowExpiredError,
+)
 from .._messages.session import (
     Capabilities,
     SessionHelloPayload,
@@ -83,13 +89,34 @@ async def _perform_resume(  # noqa: PLR0913
     bearer, the resume request, negotiated features, welcome caps). This
     helper exists specifically to keep `perform_handshake` simple.
     """
-    record = runtime._pop_resumable(resume.session_id)
+    record = runtime._resume_records.get(resume.session_id)
     if record is None:
+        # Never existed (or already consumed): an auth-level failure, not a
+        # window-expiry. §6.3 reserves RESUME_WINDOW_EXPIRED for a known
+        # session whose buffer no longer covers the request.
         raise PermissionDeniedError(f"no resumable session for session_id={resume.session_id!r}")
+    if record.expires_at <= time.time():
+        # The resume window has elapsed (§6.3 / §12).
+        runtime._resume_records.pop(resume.session_id, None)
+        with contextlib.suppress(Exception):
+            await runtime.event_log.drop_session(resume.session_id)
+        raise ResumeWindowExpiredError(
+            f"resume window expired for session_id={resume.session_id!r}"
+        )
     if not hmac.compare_digest(record.resume_token, resume.resume_token):
         raise PermissionDeniedError("resume_token does not match")
     if record.principal != identity.principal:
         raise PermissionDeniedError("resume principal does not match the original session")
+    # The buffer must still cover the requested last_event_seq: if acked events
+    # past it were released, replaying would leave a seq gap (§6.3 / §8.3).
+    released = await runtime.event_log.released_through(resume.session_id)
+    if released > resume.last_event_seq:
+        runtime._resume_records.pop(resume.session_id, None)
+        raise ResumeWindowExpiredError(
+            "resume buffer no longer covers the requested last_event_seq"
+        )
+    # Consume the record now that it has been validated.
+    runtime._resume_records.pop(resume.session_id, None)
     # Reuse the same session_id (and bump the resume_token so the next
     # resume must use the freshly issued one).
     state = SessionState(

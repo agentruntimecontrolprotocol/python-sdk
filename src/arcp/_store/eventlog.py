@@ -19,6 +19,7 @@ class EventLog(Protocol):
     async def append(self, session_id: str, envelope: dict[str, Any]) -> None: ...
     def read_since_seq(self, session_id: str, after_seq: int) -> AsyncIterator[dict[str, Any]]: ...
     async def latest_seq(self, session_id: str) -> int: ...
+    async def released_through(self, session_id: str) -> int: ...
     async def release_through(self, session_id: str, through_seq: int) -> None: ...
     async def drop_session(self, session_id: str) -> None: ...
     async def close(self) -> None: ...
@@ -67,6 +68,9 @@ class InMemoryEventLog:
         seqs = self._seqs.get(session_id, ())
         return seqs[-1] if seqs else 0
 
+    async def released_through(self, session_id: str) -> int:
+        return self._released_through.get(session_id, 0)
+
     async def release_through(self, session_id: str, through_seq: int) -> None:
         if through_seq <= self._released_through[session_id]:
             return
@@ -100,6 +104,8 @@ class SqliteEventLog:
         self._path = str(path)
         self._db: Any = None
         self._open_lock = asyncio.Lock()
+        # Highest seq released via ack (for resume-coverage checks, §6.3).
+        self._released: dict[str, int] = {}
 
     async def _ensure_open(self) -> Any:
         # Fast path: already open, no lock contention.
@@ -167,6 +173,9 @@ class SqliteEventLog:
             row = await cur.fetchone()
             return int(row[0]) if row and row[0] is not None else 0
 
+    async def released_through(self, session_id: str) -> int:
+        return self._released.get(session_id, 0)
+
     async def release_through(self, session_id: str, through_seq: int) -> None:
         db = await self._ensure_open()
         await db.execute(
@@ -174,16 +183,20 @@ class SqliteEventLog:
             (session_id, through_seq),
         )
         await db.commit()
+        if through_seq > self._released.get(session_id, 0):
+            self._released[session_id] = through_seq
 
     async def drop_session(self, session_id: str) -> None:
         db = await self._ensure_open()
         await db.execute("DELETE FROM events WHERE session_id=?", (session_id,))
         await db.commit()
+        self._released.pop(session_id, None)
 
     async def close(self) -> None:
         if self._db is not None:
             await self._db.close()
             self._db = None
+        self._released.clear()
 
 
 __all__ = ("EventLog", "InMemoryEventLog", "SqliteEventLog")
