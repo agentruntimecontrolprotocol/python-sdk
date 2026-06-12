@@ -285,9 +285,9 @@ async def test_list_jobs_naive_created_after_does_not_raise() -> None:
         id=new_envelope_id(),
         type="session.list_jobs",
         session_id=welcome.session_id,
-        payload=SessionListJobsPayload(
-            filter=ListJobsFilter(created_after=naive_past)
-        ).model_dump(mode="json", exclude_none=True),
+        payload=SessionListJobsPayload(filter=ListJobsFilter(created_after=naive_past)).model_dump(
+            mode="json", exclude_none=True
+        ),
     )
     # Must not raise (previously: TypeError → INTERNAL_ERROR).
     await handle_list_jobs(rt, ctx, env)

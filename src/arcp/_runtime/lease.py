@@ -236,11 +236,7 @@ def validate_lease_op(
     patterns = lease.get(ctx.capability)
     # Filesystem targets are canonicalized (resolving `..`) so traversal cannot
     # escape a segment-anchored grant before matching.
-    target = (
-        canonicalize_target(ctx.target)
-        if ctx.capability in _PATH_CAPABILITIES
-        else ctx.target
-    )
+    target = canonicalize_target(ctx.target) if ctx.capability in _PATH_CAPABILITIES else ctx.target
     if not patterns or not _glob_match(patterns, target):
         raise PermissionDeniedError(
             f"operation {ctx.capability}:{ctx.target} not permitted by lease"
@@ -271,10 +267,7 @@ def _is_subset_pattern(child_patterns: list[str], parent_patterns: list[str]) ->
     containment, not by matching the child *pattern string* against the parent
     glob (which let a wider child like `/data/**` pass under `/data/*`).
     """
-    for cp in child_patterns:
-        if not any(_glob_lang_subset(cp, pp) for pp in parent_patterns):
-            return False
-    return True
+    return all(any(_glob_lang_subset(cp, pp) for pp in parent_patterns) for cp in child_patterns)
 
 
 def _patterns_are_subset(child: Lease, parent: Lease) -> bool:

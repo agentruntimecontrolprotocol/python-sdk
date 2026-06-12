@@ -11,13 +11,13 @@ from arcp import (
     RuntimeInfo,
     pair_memory_transports,
 )
+from arcp._messages.execution import Lease
 from arcp._runtime.credentials import (
     Credential,
     CredentialConstraints,
     InMemoryRevocationLog,
     JobCredentialContext,
 )
-from arcp._messages.execution import Lease
 from arcp.client import ARCPClient
 from arcp.runtime import ARCPRuntime, StaticBearerVerifier
 
@@ -81,8 +81,12 @@ async def test_concurrent_same_key_submits_one_job_one_issue() -> None:
     try:
         key = "dup-key"
         h1, h2 = await asyncio.gather(
-            c1.submit(agent="a", input=1, idempotency_key=key, lease_request={"model.use": ["m/*"]}),
-            c2.submit(agent="a", input=1, idempotency_key=key, lease_request={"model.use": ["m/*"]}),
+            c1.submit(
+                agent="a", input=1, idempotency_key=key, lease_request={"model.use": ["m/*"]}
+            ),
+            c2.submit(
+                agent="a", input=1, idempotency_key=key, lease_request={"model.use": ["m/*"]}
+            ),
         )
         # Exactly one job and one credential issuance for the reused key.
         assert h1.job_id == h2.job_id

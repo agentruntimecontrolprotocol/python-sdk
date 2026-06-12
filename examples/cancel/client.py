@@ -7,8 +7,8 @@ import contextlib
 import os
 import sys
 
-from arcp import ARCPError, ClientInfo, WebSocketTransport
 from arcp import ARCPCancelledError as ARCPCancelled
+from arcp import ARCPError, ClientInfo, WebSocketTransport
 from arcp.client import ARCPClient
 
 PORT = int(os.environ.get("ARCP_DEMO_PORT", "7883"))

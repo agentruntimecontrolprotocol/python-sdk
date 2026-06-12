@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import contextlib
+from itertools import pairwise
 
 from arcp import (
     Capabilities,
@@ -33,7 +34,7 @@ def _assert_monotonic_gapfree(seqs: list[int]) -> None:
     assert seqs == sorted(seqs), f"not monotonic: {seqs}"
     assert len(seqs) == len(set(seqs)), f"duplicate seq: {seqs}"
     # gap-free: consecutive values differ by exactly 1.
-    for a, b in zip(seqs, seqs[1:], strict=False):
+    for a, b in pairwise(seqs):
         assert b == a + 1, f"gap in seq stream: {seqs}"
 
 

@@ -67,7 +67,10 @@ def test_single_star_child_is_subset_of_globstar_parent() -> None:
 
 
 def test_model_use_child_outside_parent_set_rejected() -> None:
-    assert is_lease_subset({"model.use": ["tier-fast/*-preview/*"]}, {"model.use": ["tier-fast/*"]}) is False
+    assert (
+        is_lease_subset({"model.use": ["tier-fast/*-preview/*"]}, {"model.use": ["tier-fast/*"]})
+        is False
+    )
     assert is_lease_subset({"model.use": ["anthropic/*"]}, {"model.use": ["tier-fast/*"]}) is False
 
 

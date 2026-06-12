@@ -34,8 +34,8 @@ from .._messages.session import (
     SessionPingPayload,
     SessionPongPayload,
 )
-from .._transport.base import TransportClosed
 from .._time import now_iso_z as _now_iso
+from .._transport.base import TransportClosed
 from .._ulid import new_envelope_id, new_job_id
 from .credentials import Credential, JobCredentialContext
 from .job import Job

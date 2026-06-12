@@ -17,7 +17,7 @@ from arcp import (
     RuntimeInfo,
     pair_memory_transports,
 )
-from arcp._messages.execution import LeaseConstraints as LC
+from arcp._messages.execution import LeaseConstraints as LeaseConstraintsMsg
 from arcp._runtime.lease import LeaseOpContext, validate_lease_op
 from arcp.client import ARCPClient
 from arcp.runtime import ARCPRuntime, StaticBearerVerifier
@@ -27,7 +27,7 @@ def test_expiry_grace_window_is_applied_and_configurable() -> None:
     now = dt.datetime.now(dt.UTC)
     # expires_at 0.5s in the past relative to `now`.
     expires = (now - dt.timedelta(seconds=0.5)).isoformat().replace("+00:00", "Z")
-    constraints = LC(expires_at=expires)
+    constraints = LeaseConstraintsMsg(expires_at=expires)
     lease = {"fs.read": ["*"]}
     ctx = LeaseOpContext(capability="fs.read", target="f", now=now)
 

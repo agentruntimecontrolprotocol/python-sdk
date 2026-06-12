@@ -62,9 +62,9 @@ async def test_jobs_emit_to_resumed_session_and_window_events_replay() -> None:
         async for e in rt.event_log.read_since_seq(welcome.session_id, 1)
         if e.get("job_id") == job_id
     ]
-    assert any(
-        e["payload"].get("body", {}).get("message") == "e1" for e in logged
-    ), f"window event e1 not persisted: {logged}"
+    assert any(e["payload"].get("body", {}).get("message") == "e1" for e in logged), (
+        f"window event e1 not persisted: {logged}"
+    )
 
     # --- connection 2: resume ----------------------------------------------
     server_b, client_b = pair_memory_transports()
@@ -104,7 +104,8 @@ async def test_jobs_emit_to_resumed_session_and_window_events_replay() -> None:
 
         # The seqs B observes are strictly increasing (no collision/gap).
         seqs = [s for _, s, _ in seen if s is not None]
-        assert seqs == sorted(seqs) and len(seqs) == len(set(seqs)), seqs
+        assert seqs == sorted(seqs), seqs
+        assert len(seqs) == len(set(seqs)), seqs
     finally:
         for c in (a, b):
             with contextlib.suppress(Exception):

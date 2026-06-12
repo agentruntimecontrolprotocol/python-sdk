@@ -6,7 +6,7 @@ from __future__ import annotations
 
 import asyncio
 from collections.abc import Awaitable, Callable
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, cast
 
 from .._envelope import Envelope
 from .._errors import InternalError, error_from_payload
@@ -77,7 +77,9 @@ async def _on_session_ping(client: ARCPClient, env: Envelope) -> None:
 async def _on_session_error(client: ARCPClient, env: Envelope) -> None:
     err = error_from_payload(env.payload)
     details = env.payload.get("details")
-    request_id = details.get("request_id") if isinstance(details, dict) else None
+    request_id = (
+        cast("dict[str, Any]", details).get("request_id") if isinstance(details, dict) else None
+    )
     # A per-request dispatch failure (e.g. an unknown agent on one submit)
     # carries the originating request_id; fail only that request so unrelated
     # in-flight job handles keep running (#71). Errors without a request_id
