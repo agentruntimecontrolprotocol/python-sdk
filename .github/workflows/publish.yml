@@ -69,7 +69,7 @@ jobs:
       # `pip install` directly from the release URL if they need an
       # off-PyPI source.
       - name: Create GitHub Release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           files: |
             dist/*.whl
